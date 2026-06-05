@@ -1,0 +1,28 @@
+[
+  {
+    "question_id": "Q1",
+    "question": "请说明 t2、t3、t4g 实例类型的主要区别",
+    "reference_answer": "t2 是第一代可突增实例，基于 Xen 虚拟化，仅支持 Intel 处理器，不支持 Unlimited 模式默认开启。t3 基于 Nitro 平台，支持 Intel 处理器，默认开启 Unlimited 模式，网络性能更好且支持 EBS 优化。t4g 同样基于 Nitro 平台，但采用 AWS Graviton2（ARM 架构）处理器，相比 t3 性价比提升约 40%，适合 ARM 兼容的工作负载。三者均属于可突增实例家族，使用 CPU 积分机制管理基线性能。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances.html",
+      "https://aws.amazon.com/ec2/instance-types/t4/"
+    ]
+  },
+  {
+    "question_id": "Q2",
+    "question": "请解释 Nitro 架构与 Xen 架构的核心区别，并列举属于各架构的实例家族",
+    "reference_answer": "Xen 架构是早期 EC2 使用的虚拟化平台，由 Dom0 管理域控制 I/O 调度，部分资源被虚拟化管理层占用。典型 Xen 实例包括 t2、m3、c3、r3 等。Nitro 架构是 AWS 自研的轻量级虚拟化平台，将网络、存储、安全的处理卸载到专用 Nitro Card 硬件上，宿主机几乎所有资源都可用于客户工作负载。Nitro 还引入了 Nitro Security Chip 保障硬件级安全。典型 Nitro 实例包括 t3、m5、c5、r5、m6i、c6g 等。Nitro 的关键优势包括：更高的网络吞吐（支持 ENA/EFA）、更好的 EBS 性能（裸金属级 I/O）、以及硬件安全隔离。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+      "https://aws.amazon.com/ec2/nitro/"
+    ]
+  },
+  {
+    "question_id": "Q3",
+    "question": "EC2 实例的购买选项有哪些？各自适用什么场景？",
+    "reference_answer": "EC2 提供以下主要购买选项：1) On-Demand（按需）：按秒/小时计费，无承诺，适合短期或不可预测的工作负载。2) Reserved Instances（RI 预留实例）：1年或3年承诺，最高可节省 72%，适合稳定运行的生产环境。分为 Standard RI（不可变更实例家族）和 Convertible RI（可转换）。3) Savings Plans：承诺一定金额的使用量（按 $/hr），比 RI 更灵活，适用范围更广（可跨实例家族、区域）。4) Spot Instances：利用 AWS 空闲容量，最高可节省 90%，但可能被中断，适合容错性高的批处理、CI/CD、大数据分析。5) Dedicated Hosts（专用主机）：整台物理服务器专属使用，适合有合规要求或 BYOL 需求的场景。6) Dedicated Instances（专用实例）：运行在专属硬件上但不暴露物理主机，适合隔离需求。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
+    ]
+  }
+]
