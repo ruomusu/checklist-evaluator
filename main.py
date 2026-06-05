@@ -10,7 +10,6 @@ import logging
 import re
 import sys
 import time
-from pathlib import Path
 
 from config import Config
 from logger import log, log_separator
@@ -61,29 +60,9 @@ def load_student_answers(filepath: str, knowledge_items: list[KnowledgeItem]) ->
     return answers
 
 
-def load_search_context(filepath: str = None) -> str:
-    """
-    加载外部搜索上下文（预留接口）
-
-    该函数可被外部插件调用或替换，将搜索引擎/RAG 检索到的补充资料
-    注入到评估流程中。
-
-    Args:
-        filepath: 可选的搜索上下文文件路径
-
-    Returns:
-        str: 搜索上下文文本，若无则返回空字符串
-    """
-    if filepath and Path(filepath).exists():
-        with open(filepath, "r", encoding="utf-8") as f:
-            return f.read()
-    return ""
-
-
 def run_evaluation(
     student_answers_path: str,
     checklist_id: str = None,
-    search_context_path: str = None,
     student_name: str = "新人",
     output_filename: str = None,
     provider: KnowledgeProvider = None,
@@ -94,7 +73,6 @@ def run_evaluation(
     Args:
         student_answers_path: 新人答卷文件路径（Markdown/TXT）
         checklist_id: Checklist 标识，用于从外部系统筛选题目集
-        search_context_path: 可选的搜索上下文文件路径
         student_name: 新人姓名
         output_filename: 自定义报告文件名
         provider: 可选的自定义 KnowledgeProvider 实例
@@ -134,21 +112,13 @@ def run_evaluation(
         log(f"答卷解析失败: {e}", stage="ERROR", level=logging.ERROR)
         raise
 
-    # 3. 加载搜索上下文
-    log("正在加载外部搜索上下文...", stage="SEARCH")
-    search_context = load_search_context(search_context_path)
-    if search_context:
-        log(f"已加载搜索资料（{len(search_context)} 字符）", stage="SEARCH")
-    else:
-        log("无额外搜索资料，将仅基于标准答案评估", stage="SEARCH")
-
-    # 4. 调用大模型评估
+    # 3. 调用大模型评估（搜索由 Tool Calling 在评估过程中自动触发）
     log_separator("调用大模型评估")
     evaluator = Evaluator()
-    report = evaluator.evaluate(knowledge_items, student_answers, search_context)
+    report = evaluator.evaluate(knowledge_items, student_answers)
     report.student_name = student_name
 
-    # 5. 生成报告
+    # 4. 生成报告
     log_separator("生成评估报告")
     generator = ReportGenerator()
     filepath = generator.save_report(report, output_filename)
@@ -168,27 +138,27 @@ def main():
     """命令行入口"""
     if len(sys.argv) < 2:
         print(
-            "用法: python main.py <新人答卷.md> [checklist_id] [搜索上下文.txt] [新人姓名]\n"
+            "用法: python main.py <新人答卷.md> [checklist_id] [新人姓名]\n"
             "\n"
             "说明:\n"
             "  标准答案通过 KNOWLEDGE_PROVIDER 配置的数据源自动获取\n"
             "  支持的数据源: local（本地JSON）, api（外部API）, database（数据库）\n"
-            "  配置方式: 编辑 .env 文件中的 KNOWLEDGE_PROVIDER 及相关参数\n"
+            "  外部资料检索由大模型通过 Tool Calling 自动触发，无需手动传入\n"
+            "  配置方式: 编辑 .env 文件中的相关参数\n"
             "\n"
             "示例:\n"
-            "  python main.py answers.md                             # 使用默认 provider\n"
-            "  python main.py answers.md ec2-basics                  # 指定 checklist ID\n"
-            "  python main.py answers.md ec2-basics search.txt 张三  # 完整参数\n"
+            "  python main.py answers.md                    # 使用默认 provider\n"
+            "  python main.py answers.md ec2-basics         # 指定 checklist\n"
+            "  python main.py answers.md ec2-basics 张三    # 完整参数\n"
         )
         sys.exit(1)
 
     answers_path = sys.argv[1]
     checklist_id = sys.argv[2] if len(sys.argv) > 2 else None
-    search_path = sys.argv[3] if len(sys.argv) > 3 else None
-    name = sys.argv[4] if len(sys.argv) > 4 else "新人"
+    name = sys.argv[3] if len(sys.argv) > 3 else "新人"
 
     try:
-        run_evaluation(answers_path, checklist_id, search_path, name)
+        run_evaluation(answers_path, checklist_id, name)
     except KeyboardInterrupt:
         log("\n用户中断执行", stage="ERROR", level=logging.WARNING)
         sys.exit(130)
