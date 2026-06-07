@@ -31,10 +31,11 @@ class StudentAnswer(BaseModel):
 
 
 class QuestionEvaluation(BaseModel):
-    """单题评估结果（极简：只有判定等级、缺失点和可选提醒）"""
+    """单题评估结果（极简：判定等级、原题文本、缺失点和可选提醒）"""
     question_id: str = Field(description="题目编号")
+    question: str = Field(default="", description="原题文本")
     mastery_level: MasteryLevel = Field(description="掌握程度判定")
-    missing_points: list[str] = Field(default_factory=list, description="缺失/错误的关键知识点")
+    missing_points: list[str] = Field(default_factory=list, description="缺失/错误的关键知识点（含角标引用）")
     notes: str = Field(default="", description="可选提醒，如链接区域建议")
 
 

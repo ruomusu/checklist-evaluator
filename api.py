@@ -139,20 +139,32 @@ FRONTEND_HTML = """<!DOCTYPE html>
         .status-bar {
             display: none;
             text-align: center;
-            padding: 24px 0;
+            padding: 32px 0;
         }
         .status-bar.active { display: block; }
-        .spinner {
-            width: 36px;
-            height: 36px;
-            border: 4px solid #e0e0e0;
-            border-top-color: #4a90d9;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 12px;
+        .progress-wrapper {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto 16px;
+            background: #e8ecf0;
+            border-radius: 20px;
+            height: 12px;
+            overflow: hidden;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .status-text { color: #666; font-size: 0.9rem; }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4a90d9, #67b8f7);
+            border-radius: 20px;
+            transition: width 0.5s ease;
+        }
+        .status-text { color: #666; font-size: 0.9rem; margin-top: 8px; }
+        .progress-percent { 
+            color: #4a90d9; 
+            font-weight: 600; 
+            font-size: 1.1rem; 
+            margin-bottom: 8px; 
+        }
         .result-card {
             display: none;
             background: #fff;
@@ -227,7 +239,10 @@ FRONTEND_HTML = """<!DOCTYPE html>
         </div>
 
         <div class="status-bar" id="statusBar">
-            <div class="spinner"></div>
+            <div class="progress-percent" id="progressPercent">0%</div>
+            <div class="progress-wrapper">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
             <div class="status-text" id="statusText">准备中...</div>
         </div>
 
@@ -247,6 +262,8 @@ FRONTEND_HTML = """<!DOCTYPE html>
         const uploadCard = document.getElementById('uploadCard');
         const statusBar = document.getElementById('statusBar');
         const statusText = document.getElementById('statusText');
+        const progressFill = document.getElementById('progressFill');
+        const progressPercent = document.getElementById('progressPercent');
         const resultCard = document.getElementById('resultCard');
         const resultContent = document.getElementById('resultContent');
         const errorMsg = document.getElementById('errorMsg');
@@ -276,6 +293,45 @@ FRONTEND_HTML = """<!DOCTYPE html>
             formData.append('file', file);
             formData.append('student_name', studentName.value || '新人');
 
+            // 模拟动态进度条
+            let progressTimer = null;
+            let currentPct = 0;
+            let stepIdx = 0;
+            const steps = [
+                { pct: 5,  msg: '正在上传文件...' },
+                { pct: 12, msg: '正在加载知识库...' },
+                { pct: 20, msg: '正在解析答卷内容...' },
+                { pct: 30, msg: '正在分析第 1 题...' },
+                { pct: 40, msg: '正在分析第 2 题...' },
+                { pct: 50, msg: '正在分析第 3 题...' },
+                { pct: 60, msg: '正在分析第 4 题...' },
+                { pct: 70, msg: '正在分析第 5 题...' },
+                { pct: 80, msg: '正在综合评估...' },
+                { pct: 88, msg: '正在生成报告...' },
+                { pct: 92, msg: '即将完成...' },
+            ];
+            function setProgress(pct, msg) {
+                progressFill.style.width = pct + '%';
+                progressPercent.textContent = pct + '%';
+                if (msg) statusText.textContent = msg;
+            }
+            function startProgress() {
+                stepIdx = 0;
+                setProgress(steps[0].pct, steps[0].msg);
+                progressTimer = setInterval(function() {
+                    stepIdx++;
+                    if (stepIdx < steps.length) {
+                        setProgress(steps[stepIdx].pct, steps[stepIdx].msg);
+                    }
+                }, 3000);
+            }
+            function stopProgress() {
+                if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+                setProgress(100, '评估完成');
+            }
+
+            startProgress();
+
             try {
                 const response = await fetch('/evaluate', {
                     method: 'POST',
@@ -283,6 +339,7 @@ FRONTEND_HTML = """<!DOCTYPE html>
                 });
 
                 if (!response.ok) {
+                    stopProgress();
                     statusBar.classList.remove('active');
                     let detail = '评估过程中出现问题，请重试';
                     try {
@@ -295,35 +352,74 @@ FRONTEND_HTML = """<!DOCTYPE html>
                     return;
                 }
 
-                // 流式读取响应
-                statusText.textContent = '大模型正在分析答卷...';
-                resultCard.classList.add('active');
-                resultContent.innerHTML = '<span class="cursor"></span>';
-
+                // SSE 流式读取
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
-                let buffer = '';
+                let sseBuffer = '';
+                let reportBuffer = '';
+                let reportStarted = false;
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
 
-                    const chunk = decoder.decode(value, { stream: true });
-                    buffer += chunk;
-                    resultContent.textContent = buffer;
-                    // 添加光标
-                    const cursor = document.createElement('span');
-                    cursor.className = 'cursor';
-                    resultContent.appendChild(cursor);
-                    // 滚动到底部
-                    resultCard.scrollTop = resultCard.scrollHeight;
+                    sseBuffer += decoder.decode(value, { stream: true });
+
+                    // 解析 SSE 消息（以双换行分隔）
+                    const messages = sseBuffer.split('\\n\\n');
+                    sseBuffer = messages.pop(); // 保留未完成的部分
+
+                    for (const msg of messages) {
+                        if (!msg.trim()) continue;
+
+                        let eventType = 'message';
+                        let data = '';
+
+                        for (const line of msg.split('\\n')) {
+                            if (line.startsWith('event: ')) {
+                                eventType = line.slice(7);
+                            } else if (line.startsWith('data: ')) {
+                                data = line.slice(6);
+                            }
+                        }
+
+                        if (eventType === 'progress') {
+                            // 更新进度提示文字
+                            statusText.textContent = data;
+                        } else if (eventType === 'content') {
+                            // 收到报告内容
+                            if (!reportStarted) {
+                                reportStarted = true;
+                                stopProgress();
+                                statusBar.classList.remove('active');
+                                resultCard.classList.add('active');
+                            }
+                            // 空行占位还原
+                            const lineText = (data === ' ') ? '' : data;
+                            reportBuffer += (reportBuffer ? '\\n' : '') + lineText;
+                            resultContent.textContent = reportBuffer;
+                            // 添加光标
+                            const cursor = document.createElement('span');
+                            cursor.className = 'cursor';
+                            resultContent.appendChild(cursor);
+                            resultCard.scrollTop = resultCard.scrollHeight;
+                        } else if (eventType === 'done') {
+                            // 完成
+                            statusBar.classList.remove('active');
+                            resultContent.textContent = reportBuffer;
+                        }
+                    }
                 }
 
-                // 完成，移除光标
+                // 确保最终状态正确
                 statusBar.classList.remove('active');
-                resultContent.textContent = buffer;
+                if (reportBuffer) {
+                    resultContent.textContent = reportBuffer;
+                    resultCard.classList.add('active');
+                }
 
             } catch (e) {
+                stopProgress();
                 statusBar.classList.remove('active');
                 errorMsg.textContent = '网络连接失败，请检查服务是否正常运行';
                 errorMsg.classList.add('active');
@@ -416,15 +512,20 @@ async def _stream_evaluate(
     filename: str,
 ) -> AsyncGenerator[str, None]:
     """
-    流式评估生成器：执行评估并逐块 yield 报告文本
+    SSE 流式评估生成器
 
-    流式策略：
-    - 评估阶段（Tool Calling + LLM）需要完整执行后才能解析 JSON
-    - 拿到报告文本后，逐行流式输出（模拟打字机效果）
+    协议：
+    - 进度消息格式：  event: progress\ndata: 正在分析第 N 题...\n\n
+    - 报告内容格式：  event: content\ndata: <一行报告文本>\n\n
+    - 完成信号：      event: done\ndata: \n\n
     """
     total_start = time.time()
     log_separator("API 流式评估请求")
     log(f"评估对象: {student_name} | 文件: {filename}", stage="INIT")
+
+    # 发送初始进度
+    yield "event: progress\ndata: 正在加载知识库...\n\n"
+    await asyncio.sleep(0.1)
 
     # 1. 获取知识库
     provider = create_provider()
@@ -432,15 +533,28 @@ async def _stream_evaluate(
     log(f"已获取 {len(knowledge_items)} 道题目", stage="KB")
 
     # 2. 解析答卷
+    yield "event: progress\ndata: 正在解析答卷...\n\n"
+    await asyncio.sleep(0.1)
+
     student_answers = _parse_answers_from_text(content, knowledge_items)
     if not student_answers:
-        yield "错误：无法从文件中解析出任何回答，请检查格式"
+        yield "event: content\ndata: 错误：无法从文件中解析出任何回答，请检查格式\n\n"
+        yield "event: done\ndata: \n\n"
         return
     log(f"已解析 {len(student_answers)} 道回答", stage="ANSWER")
 
-    # 3. 调用大模型评估（这步需要完整执行）
-    evaluator = Evaluator()
-    report = evaluator.evaluate(knowledge_items, student_answers)
+    # 3. 调用大模型评估
+    yield "event: progress\ndata: 正在调用大模型评估...\n\n"
+    await asyncio.sleep(0.1)
+
+    # 在线程池中执行阻塞的 LLM 调用，避免阻塞事件循环
+    import concurrent.futures
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        evaluator = Evaluator()
+        report = await loop.run_in_executor(
+            pool, evaluator.evaluate, knowledge_items, student_answers
+        )
     report.student_name = student_name
 
     # 4. 生成报告并保存
@@ -454,11 +568,12 @@ async def _stream_evaluate(
     # 5. 逐行流式输出报告（打字机效果）
     lines = markdown_report.split("\n")
     for i, line in enumerate(lines):
-        yield line
-        if i < len(lines) - 1:
-            yield "\n"
-        # 短暂延迟，制造流式效果
-        await asyncio.sleep(0.03)
+        # SSE data 字段中空行用特殊占位
+        data_line = line if line else " "
+        yield f"event: content\ndata: {data_line}\n\n"
+        await asyncio.sleep(0.02)
+
+    yield "event: done\ndata: \n\n"
 
 
 @app.post(
@@ -497,8 +612,9 @@ async def evaluate(
     if not content.strip():
         raise HTTPException(status_code=400, detail="文件内容为空")
 
-    # 返回流式响应
+    # 返回 SSE 流式响应
     return StreamingResponse(
         _stream_evaluate(content, student_name, checklist_id, file.filename),
-        media_type="text/plain; charset=utf-8",
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

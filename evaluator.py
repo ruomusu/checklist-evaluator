@@ -242,6 +242,7 @@ class Evaluator:
         for item in data.get("question_evaluations", []):
             evaluations.append(QuestionEvaluation(
                 question_id=item["question_id"],
+                question=item.get("question", ""),
                 mastery_level=MasteryLevel(item["mastery_level"]),
                 missing_points=item.get("missing_points", []),
                 notes=item.get("notes", ""),

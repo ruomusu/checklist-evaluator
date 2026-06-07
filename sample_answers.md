@@ -1,10 +1,8 @@
-# 新人 Checklist 回答
+•  请举例说明哪些实例类型是基于Nitro的，哪些是基于Xen的： 基于 Nitro 系统的通常为新一代实例，例如通用型的 M5、M6g、T3、T4g，计算优化型的 C5、C6i，以及内存优化型的 R5、R6g。基于 Xen 架构的多为较早期的实例，例如通用型的 T1、T2、M3、M4，计算优化型的 C3、C4，以及内存优化型的 R3、R4。
+•  参考文档： https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
+•  是否可以启动 t4g 实例类型的 EC2 Windows 实例： 不可以。t4g 实例底层使用的是 AWS 研发的 Graviton2 处理器（ARM 架构）。由于目前 Amazon EC2 中的 Windows Server 仅支持运行在 x86/x64 架构（如搭载 Intel 或 AMD）的处理器上，因此无法在 Graviton 处理器系列的实例上启动 Windows 系统。
+  参考文档： https://docs.aws.amazon.com/prescriptive-guidance/latest/optimize-costs-microsoft-workloads/right-size-selection.html
+•  请说明 t2、t3、t4g 实例类型的主要区别： t2 基于旧版 Xen 虚拟化架构和 Intel 处理器，默认采用“标准”突发性能模式。t3 升级为底层的 Nitro 架构，采用更新的 Intel 或 AMD 处理器，且默认开启“无限制”（Unlimited）突发模式。t4g 同样基于 Nitro 架构并默认开启“无限制”模式，但核心区别在于它采用了 ARM 架构的 Graviton2 处理器，相较于 t3 能提供最高 40% 的性价比提升，但必须运行在支持 ARM 架构的 Linux 生态系统中。
 
-## Q1
-t2 是比较早的实例，t3 比 t2 新，性能更好。t4g 使用的是 ARM 处理器（Graviton），比较便宜。它们都是突增性能实例，有 CPU 积分的概念。t3 和 t4g 都是 Nitro 架构。
+•  参考文档： https://aws.amazon.com/ec2/instance-types/t4/
 
-## Q2
-Nitro 是 AWS 新的虚拟化架构，性能比 Xen 好。Xen 是比较老的架构，m3、c3 那些用的是 Xen。新的实例比如 m5、c5 用的是 Nitro。Nitro 把网络和存储都卸载到专门的硬件上，所以性能更好。
-
-## Q3
-EC2 可以按需购买，也可以预留。Spot 实例最便宜但是可能被回收。Reserved Instance 可以省钱，承诺 1 年或 3 年。还有 Savings Plans 也是省钱的方式，比 RI 更灵活。
