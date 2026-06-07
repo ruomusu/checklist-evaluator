@@ -263,6 +263,7 @@ class Evaluator:
             ambiguous_count=ambiguous,
             weak_count=weak,
             question_evaluations=evaluations,
+            references=data.get("references", []),
         )
 
     def evaluate(

@@ -39,10 +39,11 @@ class QuestionEvaluation(BaseModel):
 
 
 class EvaluationReport(BaseModel):
-    """评估报告（精简版：仅逐题判定）"""
+    """评估报告（精简版：逐题判定 + 参考文献）"""
     student_name: str = Field(default="新人", description="新人姓名")
     total_questions: int = Field(description="总题目数")
     mastered_count: int = Field(default=0, description="掌握的题目数")
     ambiguous_count: int = Field(default=0, description="模棱两可的题目数")
     weak_count: int = Field(default=0, description="薄弱的题目数")
     question_evaluations: list[QuestionEvaluation] = Field(description="逐题评估详情")
+    references: list[str] = Field(default_factory=list, description="参考文献列表")

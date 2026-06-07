@@ -51,6 +51,16 @@ class ReportGenerator:
                 lines.append(f"- 💡 {ev.notes}")
             lines.append("")
 
+        # 参考文献板块
+        if report.references:
+            lines.append("---")
+            lines.append("")
+            lines.append("### 📚 参考资料 (References)")
+            lines.append("")
+            for ref in report.references:
+                lines.append(ref)
+            lines.append("")
+
         return "\n".join(lines)
 
     def save_report(self, report: EvaluationReport, filename: str = None) -> str:
