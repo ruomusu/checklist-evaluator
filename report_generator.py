@@ -43,12 +43,26 @@ class ReportGenerator:
 
         for ev in report.question_evaluations:
             emoji = self._level_emoji(ev.mastery_level)
-            lines.append(f"**{ev.question_id}** {emoji} {ev.mastery_level.value}")
+            # 题号后展示原题文本
+            if ev.question:
+                lines.append(f"**{ev.question_id}: {ev.question}** {emoji} {ev.mastery_level.value}")
+            else:
+                lines.append(f"**{ev.question_id}** {emoji} {ev.mastery_level.value}")
             if ev.missing_points:
                 for point in ev.missing_points:
                     lines.append(f"- {point}")
             if ev.notes:
                 lines.append(f"- 💡 {ev.notes}")
+            lines.append("")
+
+        # 参考文献板块
+        if report.references:
+            lines.append("---")
+            lines.append("")
+            lines.append("### 📚 参考资料 (References)")
+            lines.append("")
+            for ref in report.references:
+                lines.append(ref)
             lines.append("")
 
         return "\n".join(lines)

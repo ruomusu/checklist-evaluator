@@ -31,18 +31,20 @@ class StudentAnswer(BaseModel):
 
 
 class QuestionEvaluation(BaseModel):
-    """单题评估结果（极简：只有判定等级、缺失点和可选提醒）"""
+    """单题评估结果（极简：判定等级、原题文本、缺失点和可选提醒）"""
     question_id: str = Field(description="题目编号")
+    question: str = Field(default="", description="原题文本")
     mastery_level: MasteryLevel = Field(description="掌握程度判定")
-    missing_points: list[str] = Field(default_factory=list, description="缺失/错误的关键知识点")
+    missing_points: list[str] = Field(default_factory=list, description="缺失/错误的关键知识点（含角标引用）")
     notes: str = Field(default="", description="可选提醒，如链接区域建议")
 
 
 class EvaluationReport(BaseModel):
-    """评估报告（精简版：仅逐题判定）"""
+    """评估报告（精简版：逐题判定 + 参考文献）"""
     student_name: str = Field(default="新人", description="新人姓名")
     total_questions: int = Field(description="总题目数")
     mastered_count: int = Field(default=0, description="掌握的题目数")
     ambiguous_count: int = Field(default=0, description="模棱两可的题目数")
     weak_count: int = Field(default=0, description="薄弱的题目数")
     question_evaluations: list[QuestionEvaluation] = Field(description="逐题评估详情")
+    references: list[str] = Field(default_factory=list, description="参考文献列表")

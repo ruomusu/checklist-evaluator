@@ -408,11 +408,12 @@ cat logs/eval_20260605_143201.log
 ```
 浏览器访问 /
   → 展示极简上传页面（标题 + 文件框 + 按钮）
-  → 用户选择文件，点击"开始评估"
+  → 用户选择文件（.md / .txt / .docx），点击"开始评估"
   → 前端 Fetch POST /evaluate（带 FormData）
-  → 显示 Loading 动画
-  → 拿到 Markdown 文本结果
-  → 直接渲染到页面，无任何技术细节暴露
+  → 显示"大模型正在分析答卷"状态
+  → 后端返回 StreamingResponse（逐行流式输出）
+  → 前端通过 ReadableStream 逐字拼接，打字机效果渲染
+  → 完成后移除光标，展示完整报告
 ```
 
 ---

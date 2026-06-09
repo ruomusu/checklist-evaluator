@@ -151,7 +151,9 @@ SEARCH_API_URL=https://api.tavily.com
 
 ## 四、答卷文件格式
 
-支持 `.md`、`.txt` 和 `.docx` 格式，推荐以下结构：
+支持 `.md`、`.txt` 和 `.docx`（Word）格式。
+
+### Markdown / TXT 格式（推荐）
 
 ```markdown
 ## Q1
@@ -159,9 +161,6 @@ SEARCH_API_URL=https://api.tavily.com
 
 ## Q2
 这是第二题的回答内容...
-
-## Q3
-这是第三题的回答内容...
 ```
 
 也支持纯数字编号：
@@ -174,6 +173,13 @@ SEARCH_API_URL=https://api.tavily.com
 回答...
 ```
 
+### Word 格式（.docx）
+
+- 每道题使用 Word 标题样式（Heading 1/2/3），内容写在标题下方
+- 标题文本需包含题号（如"Q1"或"1"）
+- 系统会自动将 Word 标题转为 `## Q1` 格式后解析
+- 不支持旧版 `.doc` 格式，请另存为 `.docx`
+
 如果文件没有明确的题号标记，系统会按段落顺序与知识库题目一一对应。
 
 ---
@@ -182,7 +188,7 @@ SEARCH_API_URL=https://api.tavily.com
 
 ### 报告格式
 
-评估报告为极简 Markdown，示例：
+评估报告为极简 Markdown，通过流式响应逐行输出（打字机效果）。示例：
 
 ```markdown
 # Checklist 评估报告 — 张三

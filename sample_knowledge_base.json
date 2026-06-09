@@ -4,25 +4,26 @@
     "question": "请说明 t2、t3、t4g 实例类型的主要区别",
     "reference_answer": "t2 是第一代可突增实例，基于 Xen 虚拟化，仅支持 Intel 处理器，不支持 Unlimited 模式默认开启。t3 基于 Nitro 平台，支持 Intel 处理器，默认开启 Unlimited 模式，网络性能更好且支持 EBS 优化。t4g 同样基于 Nitro 平台，但采用 AWS Graviton2（ARM 架构）处理器，相比 t3 性价比提升约 40%，适合 ARM 兼容的工作负载。三者均属于可突增实例家族，使用 CPU 积分机制管理基线性能。",
     "reference_links": [
-      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances.html",
-      "https://aws.amazon.com/ec2/instance-types/t4/"
+      "https://docs.amazonaws.cn/ec2/latest/instancetypes/gp.html#gp_summary",
+      "https://docs.amazonaws.cn/AWSEC2/latest/UserGuide/burstable-performance-instances.html",
+      "https://docs.amazonaws.cn/AWSEC2/latest/UserGuide/burstable-credits-baseline-concepts.html#burstable-performance-instances-credit-table",
+      "https://docs.amazonaws.cn/AWSEC2/latest/UserGuide/burstable-performance-instances-standard-mode-concepts.html#launch-credits"
     ]
   },
   {
     "question_id": "Q2",
-    "question": "请解释 Nitro 架构与 Xen 架构的核心区别，并列举属于各架构的实例家族",
-    "reference_answer": "Xen 架构是早期 EC2 使用的虚拟化平台，由 Dom0 管理域控制 I/O 调度，部分资源被虚拟化管理层占用。典型 Xen 实例包括 t2、m3、c3、r3 等。Nitro 架构是 AWS 自研的轻量级虚拟化平台，将网络、存储、安全的处理卸载到专用 Nitro Card 硬件上，宿主机几乎所有资源都可用于客户工作负载。Nitro 还引入了 Nitro Security Chip 保障硬件级安全。典型 Nitro 实例包括 t3、m5、c5、r5、m6i、c6g 等。Nitro 的关键优势包括：更高的网络吞吐（支持 ENA/EFA）、更好的 EBS 性能（裸金属级 I/O）、以及硬件安全隔离。",
+    "question": "是否可以启动t4g实例类型的EC2 Windows实例？",
+    "reference_answer": "T4g 只支持 Linux 操作系统。",
     "reference_links": [
-      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
-      "https://aws.amazon.com/ec2/nitro/"
+      "https://docs.amazonaws.cn/ec2/latest/instancetypes/gp.html#gp_summary"
     ]
   },
-  {
-    "question_id": "Q3",
-    "question": "EC2 实例的购买选项有哪些？各自适用什么场景？",
-    "reference_answer": "EC2 提供以下主要购买选项：1) On-Demand（按需）：按秒/小时计费，无承诺，适合短期或不可预测的工作负载。2) Reserved Instances（RI 预留实例）：1年或3年承诺，最高可节省 72%，适合稳定运行的生产环境。分为 Standard RI（不可变更实例家族）和 Convertible RI（可转换）。3) Savings Plans：承诺一定金额的使用量（按 $/hr），比 RI 更灵活，适用范围更广（可跨实例家族、区域）。4) Spot Instances：利用 AWS 空闲容量，最高可节省 90%，但可能被中断，适合容错性高的批处理、CI/CD、大数据分析。5) Dedicated Hosts（专用主机）：整台物理服务器专属使用，适合有合规要求或 BYOL 需求的场景。6) Dedicated Instances（专用实例）：运行在专属硬件上但不暴露物理主机，适合隔离需求。",
-    "reference_links": [
-      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
-    ]
-  }
+{
+  "question_id": "Q3",
+  "question": "请举例说明哪些实例类型是基于Nitro的，哪些是基于Xen的",
+  "reference_answer": "基于 Nitro 的实例\n通用型：M5 | M5a | M5ad | M5d | M5dn | M5n | M5zn | M6a | M6g | M6gd | M6i | M6id | M6idn | M6in | M7a | M7g | M7gd | M7i | M7i-flex | M8a | M8azn | M8g | M8gb | M8gd | M8gn | M8i | M8id | M8i-flex | M8in | M8idn | M8ine | M8ib | M8idb | T3 | T3a | T4g\n计算优化型：C5 | C5a | C5ad | C5d | C5n | C6a | C6g | C6gd | C6gn | C6i | C6id | C6in | C7a | C7g | C7gd | C7gn | C7i | C7i-flex | C8a | C8g | C8gb | C8gd | C8gn | C8i | C8id | C8i-flex | C8in | C8ine | C8ib\n内存优化型：R5 | R5a | R5ad | R5b | R5d | R5dn | R5n | R6a | R6g | R6gd | R6i | R6id | R6idn | R6in | R7a | R7g | R7gd | R7i | R7iz | R8a | R8g | R8gb | R8gd | R8gn | R8i | R8id | R8i-flex | R8in | R8idn | R8ib | R8idb | U-3tb1 | U-6tb1 | U-9tb1 | U-12tb1 | U-18tb1 | U-24tb1 | U7i-6tb | U7i-8tb | U7i-12tb | U7in-16tb | U7in-24tb | U7in-32tb | U7inh-32tb | X2gd | X2idn | X2iedn | X2iezn | X8g | X8aedz | X8i | z1d\n存储优化型：D3 | D3en | I3en | I4g | I4i | I7i | I7ie | I8g | I8ge | Im4gn | Is4gen\n加速计算型：DL1 | DL2q | F2 | G4ad | G4dn | G5 | G5g | G6 | G6e | G6f | Gr6 | Gr6f | G7e | Inf1 | Inf2 | P4d | P4de | P5 | P5e | P5en | P6-B200 | P6-B300 | P6e-GB200 | Trn1 | Trn1n | Trn2 | Trn2u | VT1\n高性能计算：Hpc6a | Hpc6id | Hpc7a | Hpc7g | Hpc8a\n上一代实例：A1 | P3dn\n基于 Xen 的实例：\n通用型：M1 | M2 | M3 | M4 | T1 | T2\n计算优化型：C1 | C3 | C4\n内存优化型：R3 | R4 | X1 | X1e\n存储优化型：D2 | H1 | I2 | I3\n加速计算型：G3 | P3",
+  "reference_links": [
+    "https://docs.amazonaws.cn/AWSEC2/latest/UserGuide/instance-types.html#instance-hypervisor-type"
+  ]
+}
 ]

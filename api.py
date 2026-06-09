@@ -1,17 +1,19 @@
 """
 FastAPI 服务入口
 - 提供 / 根路径的新人友好前端页面
-- 提供 /evaluate 后端 API 接收答卷文件并返回评估报告
+- 提供 /evaluate 后端 API（流式 SSE 响应）
 - 提供 /health 健康检查接口（容器化部署预留）
 """
 
+import asyncio
+import io
+import json
 import logging
 import time
-import io
-from typing import Optional
+from typing import Optional, AsyncGenerator
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import PlainTextResponse, HTMLResponse
+from fastapi.responses import PlainTextResponse, HTMLResponse, StreamingResponse
 
 from config import Config
 from logger import log, log_separator
@@ -24,7 +26,7 @@ import re
 
 app = FastAPI(
     title="新人 Checklist 自动评估系统",
-    description="上传新人答卷文件（.md / .txt），自动评估并返回极简 Markdown 报告",
+    description="上传新人答卷文件，自动评估并返回极简 Markdown 报告",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -32,7 +34,7 @@ app = FastAPI(
 
 
 # ============================================================
-# 前端页面
+# 前端页面（支持流式渲染）
 # ============================================================
 
 FRONTEND_HTML = """<!DOCTYPE html>
@@ -53,10 +55,7 @@ FRONTEND_HTML = """<!DOCTYPE html>
             align-items: center;
             padding: 40px 20px;
         }
-        .container {
-            width: 100%;
-            max-width: 720px;
-        }
+        .container { width: 100%; max-width: 720px; }
         h1 {
             text-align: center;
             font-size: 1.8rem;
@@ -76,9 +75,7 @@ FRONTEND_HTML = """<!DOCTYPE html>
             padding: 32px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         }
-        .form-group {
-            margin-bottom: 20px;
-        }
+        .form-group { margin-bottom: 20px; }
         .form-group label {
             display: block;
             font-size: 0.9rem;
@@ -121,19 +118,9 @@ FRONTEND_HTML = """<!DOCTYPE html>
             opacity: 0;
             cursor: pointer;
         }
-        .file-upload-icon {
-            font-size: 2rem;
-            margin-bottom: 8px;
-        }
-        .file-upload-text {
-            color: #888;
-            font-size: 0.9rem;
-        }
-        .file-name {
-            color: #52c41a;
-            font-weight: 500;
-            font-size: 0.95rem;
-        }
+        .file-upload-icon { font-size: 2rem; margin-bottom: 8px; }
+        .file-upload-text { color: #888; font-size: 0.9rem; }
+        .file-name { color: #52c41a; font-weight: 500; font-size: 0.95rem; }
         .submit-btn {
             width: 100%;
             padding: 14px;
@@ -148,29 +135,35 @@ FRONTEND_HTML = """<!DOCTYPE html>
             margin-top: 8px;
         }
         .submit-btn:hover { background: #357abd; }
-        .submit-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .loading {
+        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .status-bar {
             display: none;
             text-align: center;
-            padding: 40px 0;
+            padding: 32px 0;
         }
-        .loading.active { display: block; }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #e0e0e0;
-            border-top-color: #4a90d9;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+        .status-bar.active { display: block; }
+        .progress-wrapper {
+            width: 100%;
+            max-width: 400px;
             margin: 0 auto 16px;
+            background: #e8ecf0;
+            border-radius: 20px;
+            height: 12px;
+            overflow: hidden;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-text {
-            color: #666;
-            font-size: 0.95rem;
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4a90d9, #67b8f7);
+            border-radius: 20px;
+            transition: width 0.5s ease;
+        }
+        .status-text { color: #666; font-size: 0.9rem; margin-top: 8px; }
+        .progress-percent { 
+            color: #4a90d9; 
+            font-weight: 600; 
+            font-size: 1.1rem; 
+            margin-bottom: 8px; 
         }
         .result-card {
             display: none;
@@ -182,14 +175,23 @@ FRONTEND_HTML = """<!DOCTYPE html>
         }
         .result-card.active { display: block; }
         .result-content {
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
             font-size: 0.88rem;
             line-height: 1.7;
             white-space: pre-wrap;
             word-break: break-word;
             color: #2c3e50;
+            min-height: 60px;
         }
-        .result-content strong { color: #1a1a2e; }
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: #4a90d9;
+            animation: blink 0.8s step-end infinite;
+            vertical-align: text-bottom;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
         .error-msg {
             display: none;
             background: #fff2f0;
@@ -225,7 +227,6 @@ FRONTEND_HTML = """<!DOCTYPE html>
                 <label for="studentName">姓名</label>
                 <input type="text" id="studentName" placeholder="请输入新人姓名" value="">
             </div>
-
             <div class="form-group">
                 <label>答卷文件</label>
                 <div class="file-upload-area" id="fileArea">
@@ -234,13 +235,15 @@ FRONTEND_HTML = """<!DOCTYPE html>
                     <div class="file-upload-text" id="fileText">点击选择文件或拖拽到此处<br><small>支持 .md / .txt / .docx 格式</small></div>
                 </div>
             </div>
-
             <button class="submit-btn" id="submitBtn" disabled>开始评估</button>
         </div>
 
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <div class="loading-text">正在评估中，请稍候...<br><small>大模型正在分析答卷内容</small></div>
+        <div class="status-bar" id="statusBar">
+            <div class="progress-percent" id="progressPercent">0%</div>
+            <div class="progress-wrapper">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="status-text" id="statusText">准备中...</div>
         </div>
 
         <div class="error-msg" id="errorMsg"></div>
@@ -257,7 +260,10 @@ FRONTEND_HTML = """<!DOCTYPE html>
         const fileText = document.getElementById('fileText');
         const submitBtn = document.getElementById('submitBtn');
         const uploadCard = document.getElementById('uploadCard');
-        const loading = document.getElementById('loading');
+        const statusBar = document.getElementById('statusBar');
+        const statusText = document.getElementById('statusText');
+        const progressFill = document.getElementById('progressFill');
+        const progressPercent = document.getElementById('progressPercent');
         const resultCard = document.getElementById('resultCard');
         const resultContent = document.getElementById('resultContent');
         const errorMsg = document.getElementById('errorMsg');
@@ -276,15 +282,55 @@ FRONTEND_HTML = """<!DOCTYPE html>
             const file = fileInput.files[0];
             if (!file) return;
 
-            // 显示加载状态
             uploadCard.style.display = 'none';
-            loading.classList.add('active');
+            statusBar.classList.add('active');
+            statusText.textContent = '正在上传文件...';
             errorMsg.classList.remove('active');
             resultCard.classList.remove('active');
+            resultContent.textContent = '';
 
             const formData = new FormData();
             formData.append('file', file);
             formData.append('student_name', studentName.value || '新人');
+
+            // 模拟动态进度条
+            let progressTimer = null;
+            let currentPct = 0;
+            let stepIdx = 0;
+            const steps = [
+                { pct: 5,  msg: '正在上传文件...' },
+                { pct: 12, msg: '正在加载知识库...' },
+                { pct: 20, msg: '正在解析答卷内容...' },
+                { pct: 30, msg: '正在分析第 1 题...' },
+                { pct: 40, msg: '正在分析第 2 题...' },
+                { pct: 50, msg: '正在分析第 3 题...' },
+                { pct: 60, msg: '正在分析第 4 题...' },
+                { pct: 70, msg: '正在分析第 5 题...' },
+                { pct: 80, msg: '正在综合评估...' },
+                { pct: 88, msg: '正在生成报告...' },
+                { pct: 92, msg: '即将完成...' },
+            ];
+            function setProgress(pct, msg) {
+                progressFill.style.width = pct + '%';
+                progressPercent.textContent = pct + '%';
+                if (msg) statusText.textContent = msg;
+            }
+            function startProgress() {
+                stepIdx = 0;
+                setProgress(steps[0].pct, steps[0].msg);
+                progressTimer = setInterval(function() {
+                    stepIdx++;
+                    if (stepIdx < steps.length) {
+                        setProgress(steps[stepIdx].pct, steps[stepIdx].msg);
+                    }
+                }, 3000);
+            }
+            function stopProgress() {
+                if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+                setProgress(100, '评估完成');
+            }
+
+            startProgress();
 
             try {
                 const response = await fetch('/evaluate', {
@@ -292,13 +338,9 @@ FRONTEND_HTML = """<!DOCTYPE html>
                     body: formData,
                 });
 
-                loading.classList.remove('active');
-
-                if (response.ok) {
-                    const text = await response.text();
-                    resultContent.textContent = text;
-                    resultCard.classList.add('active');
-                } else {
+                if (!response.ok) {
+                    stopProgress();
+                    statusBar.classList.remove('active');
                     let detail = '评估过程中出现问题，请重试';
                     try {
                         const err = await response.json();
@@ -307,9 +349,78 @@ FRONTEND_HTML = """<!DOCTYPE html>
                     errorMsg.textContent = detail;
                     errorMsg.classList.add('active');
                     uploadCard.style.display = 'block';
+                    return;
                 }
+
+                // SSE 流式读取
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let sseBuffer = '';
+                let reportBuffer = '';
+                let reportStarted = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    sseBuffer += decoder.decode(value, { stream: true });
+
+                    // 解析 SSE 消息（以双换行分隔）
+                    const messages = sseBuffer.split('\\n\\n');
+                    sseBuffer = messages.pop(); // 保留未完成的部分
+
+                    for (const msg of messages) {
+                        if (!msg.trim()) continue;
+
+                        let eventType = 'message';
+                        let data = '';
+
+                        for (const line of msg.split('\\n')) {
+                            if (line.startsWith('event: ')) {
+                                eventType = line.slice(7);
+                            } else if (line.startsWith('data: ')) {
+                                data = line.slice(6);
+                            }
+                        }
+
+                        if (eventType === 'progress') {
+                            // 更新进度提示文字
+                            statusText.textContent = data;
+                        } else if (eventType === 'content') {
+                            // 收到报告内容
+                            if (!reportStarted) {
+                                reportStarted = true;
+                                stopProgress();
+                                statusBar.classList.remove('active');
+                                resultCard.classList.add('active');
+                            }
+                            // 空行占位还原
+                            const lineText = (data === ' ') ? '' : data;
+                            reportBuffer += (reportBuffer ? '\\n' : '') + lineText;
+                            resultContent.textContent = reportBuffer;
+                            // 添加光标
+                            const cursor = document.createElement('span');
+                            cursor.className = 'cursor';
+                            resultContent.appendChild(cursor);
+                            resultCard.scrollTop = resultCard.scrollHeight;
+                        } else if (eventType === 'done') {
+                            // 完成
+                            statusBar.classList.remove('active');
+                            resultContent.textContent = reportBuffer;
+                        }
+                    }
+                }
+
+                // 确保最终状态正确
+                statusBar.classList.remove('active');
+                if (reportBuffer) {
+                    resultContent.textContent = reportBuffer;
+                    resultCard.classList.add('active');
+                }
+
             } catch (e) {
-                loading.classList.remove('active');
+                stopProgress();
+                statusBar.classList.remove('active');
                 errorMsg.textContent = '网络连接失败，请检查服务是否正常运行';
                 errorMsg.classList.add('active');
                 uploadCard.style.display = 'block';
@@ -323,6 +434,7 @@ FRONTEND_HTML = """<!DOCTYPE html>
             fileArea.classList.remove('has-file');
             fileText.innerHTML = '点击选择文件或拖拽到此处<br><small>支持 .md / .txt / .docx 格式</small>';
             submitBtn.disabled = true;
+            resultContent.textContent = '';
         });
     </script>
 </body>
@@ -335,13 +447,12 @@ def frontend_page():
     return HTMLResponse(content=FRONTEND_HTML)
 
 
-def _extract_text_from_docx(raw_bytes: bytes) -> str:
-    """
-    从 .docx 文件的二进制内容中提取纯文本
+# ============================================================
+# 文件解析工具
+# ============================================================
 
-    保留段落结构，用换行分隔。
-    Word 中的标题（Heading）会被转为 ## 格式以便后续解析。
-    """
+def _extract_text_from_docx(raw_bytes: bytes) -> str:
+    """从 .docx 文件提取纯文本，Word 标题转为 ## 格式"""
     from docx import Document
 
     doc = Document(io.BytesIO(raw_bytes))
@@ -351,17 +462,12 @@ def _extract_text_from_docx(raw_bytes: bytes) -> str:
         if not text:
             lines.append("")
             continue
-        # 将 Word 标题样式转为 Markdown 格式
         if para.style and para.style.name and para.style.name.startswith("Heading"):
             lines.append(f"## {text}")
         else:
             lines.append(text)
     return "\n".join(lines)
 
-
-# ============================================================
-# 后端 API
-# ============================================================
 
 def _parse_answers_from_text(content: str, knowledge_items: list[KnowledgeItem]) -> list[StudentAnswer]:
     """从文本内容解析新人回答"""
@@ -377,7 +483,6 @@ def _parse_answers_from_text(content: str, knowledge_items: list[KnowledgeItem])
             answer_text=answer_text.strip(),
         ))
 
-    # fallback：按段落顺序对应
     if not answers and knowledge_items:
         paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
         for i, para in enumerate(paragraphs):
@@ -390,43 +495,112 @@ def _parse_answers_from_text(content: str, knowledge_items: list[KnowledgeItem])
     return answers
 
 
+# ============================================================
+# 后端 API
+# ============================================================
+
 @app.get("/health", summary="健康检查", tags=["运维"], include_in_schema=False)
 def health_check():
     """返回 200 状态码，用于容器化部署的健康探针"""
     return {"status": "ok"}
 
 
+async def _stream_evaluate(
+    content: str,
+    student_name: str,
+    checklist_id: Optional[str],
+    filename: str,
+) -> AsyncGenerator[str, None]:
+    """
+    SSE 流式评估生成器
+
+    协议：
+    - 进度消息格式：  event: progress\ndata: 正在分析第 N 题...\n\n
+    - 报告内容格式：  event: content\ndata: <一行报告文本>\n\n
+    - 完成信号：      event: done\ndata: \n\n
+    """
+    total_start = time.time()
+    log_separator("API 流式评估请求")
+    log(f"评估对象: {student_name} | 文件: {filename}", stage="INIT")
+
+    # 发送初始进度
+    yield "event: progress\ndata: 正在加载知识库...\n\n"
+    await asyncio.sleep(0.1)
+
+    # 1. 获取知识库
+    provider = create_provider()
+    knowledge_items = provider.get_all_questions(checklist_id)
+    log(f"已获取 {len(knowledge_items)} 道题目", stage="KB")
+
+    # 2. 解析答卷
+    yield "event: progress\ndata: 正在解析答卷...\n\n"
+    await asyncio.sleep(0.1)
+
+    student_answers = _parse_answers_from_text(content, knowledge_items)
+    if not student_answers:
+        yield "event: content\ndata: 错误：无法从文件中解析出任何回答，请检查格式\n\n"
+        yield "event: done\ndata: \n\n"
+        return
+    log(f"已解析 {len(student_answers)} 道回答", stage="ANSWER")
+
+    # 3. 调用大模型评估
+    yield "event: progress\ndata: 正在调用大模型评估...\n\n"
+    await asyncio.sleep(0.1)
+
+    # 在线程池中执行阻塞的 LLM 调用，避免阻塞事件循环
+    import concurrent.futures
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        evaluator = Evaluator()
+        report = await loop.run_in_executor(
+            pool, evaluator.evaluate, knowledge_items, student_answers
+        )
+    report.student_name = student_name
+
+    # 4. 生成报告并保存
+    generator = ReportGenerator()
+    markdown_report = generator.generate_markdown(report)
+    generator.save_report(report)
+
+    total_elapsed = time.time() - total_start
+    log(f"API 评估完成 | 总耗时: {total_elapsed:.1f}s", stage="DONE")
+
+    # 5. 逐行流式输出报告（打字机效果）
+    lines = markdown_report.split("\n")
+    for i, line in enumerate(lines):
+        # SSE data 字段中空行用特殊占位
+        data_line = line if line else " "
+        yield f"event: content\ndata: {data_line}\n\n"
+        await asyncio.sleep(0.02)
+
+    yield "event: done\ndata: \n\n"
+
+
 @app.post(
     "/evaluate",
-    summary="上传答卷并评估",
+    summary="上传答卷并评估（流式响应）",
     tags=["评估"],
-    response_class=PlainTextResponse,
     include_in_schema=False,
 )
 async def evaluate(
-    file: UploadFile = File(..., description="新人答卷文件（支持 .md / .txt 等文本文件）"),
+    file: UploadFile = File(..., description="新人答卷文件"),
     student_name: str = Form(default="新人", description="新人姓名"),
-    checklist_id: Optional[str] = Form(default=None, description="Checklist ID（可选）"),
+    checklist_id: Optional[str] = Form(default=None, description="Checklist ID"),
 ):
-    """
-    接收答卷文件，执行评估，返回极简 Markdown 报告文本。
-    """
-    # 验证文件
+    """接收答卷文件，流式返回评估报告"""
     if not file.filename:
         raise HTTPException(status_code=400, detail="未上传文件")
 
-    # 读取文件内容（根据文件类型选择解析方式）
+    # 读取文件
     try:
         raw_bytes = await file.read()
         filename_lower = file.filename.lower()
 
         if filename_lower.endswith(".docx"):
-            # Word 文档解析
             content = _extract_text_from_docx(raw_bytes)
         elif filename_lower.endswith(".doc"):
             raise HTTPException(status_code=400, detail="不支持旧版 .doc 格式，请另存为 .docx 后重新上传")
         else:
-            # 纯文本格式（.md / .txt 等）
             content = raw_bytes.decode("utf-8")
     except HTTPException:
         raise
@@ -438,42 +612,9 @@ async def evaluate(
     if not content.strip():
         raise HTTPException(status_code=400, detail="文件内容为空")
 
-    # 评估流程
-    total_start = time.time()
-    log_separator("API 评估请求")
-    log(f"评估对象: {student_name} | 文件: {file.filename}", stage="INIT")
-
-    try:
-        # 1. 获取知识库
-        provider = create_provider()
-        knowledge_items = provider.get_all_questions(checklist_id)
-        log(f"已获取 {len(knowledge_items)} 道题目", stage="KB")
-
-        # 2. 解析答卷
-        student_answers = _parse_answers_from_text(content, knowledge_items)
-        if not student_answers:
-            raise HTTPException(status_code=400, detail="无法从文件中解析出任何回答，请检查格式")
-        log(f"已解析 {len(student_answers)} 道回答", stage="ANSWER")
-
-        # 3. 调用大模型评估
-        evaluator = Evaluator()
-        report = evaluator.evaluate(knowledge_items, student_answers)
-        report.student_name = student_name
-
-        # 4. 生成报告
-        generator = ReportGenerator()
-        markdown_report = generator.generate_markdown(report)
-
-        # 同时保存到文件
-        generator.save_report(report)
-
-        total_elapsed = time.time() - total_start
-        log(f"API 评估完成 | 总耗时: {total_elapsed:.1f}s", stage="DONE")
-
-        return PlainTextResponse(content=markdown_report, media_type="text/plain; charset=utf-8")
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        log(f"评估异常: {e}", stage="ERROR", level=logging.ERROR)
-        raise HTTPException(status_code=500, detail=f"评估过程中发生错误: {e}")
+    # 返回 SSE 流式响应
+    return StreamingResponse(
+        _stream_evaluate(content, student_name, checklist_id, file.filename),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
