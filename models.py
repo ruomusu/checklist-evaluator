@@ -40,11 +40,13 @@ class QuestionEvaluation(BaseModel):
 
 
 class EvaluationReport(BaseModel):
-    """评估报告（精简版：逐题判定 + 参考文献）"""
+    """评估报告（精简版：已掌握聚合 + 问题题目详情 + 参考文献）"""
     student_name: str = Field(default="新人", description="新人姓名")
     total_questions: int = Field(description="总题目数")
     mastered_count: int = Field(default=0, description="掌握的题目数")
     ambiguous_count: int = Field(default=0, description="模棱两可的题目数")
     weak_count: int = Field(default=0, description="薄弱的题目数")
-    question_evaluations: list[QuestionEvaluation] = Field(description="逐题评估详情")
-    references: list[str] = Field(default_factory=list, description="参考文献列表")
+    mastered_ids: list[str] = Field(default_factory=list, description="已掌握的题目编号列表")
+    mastered_has_global_links: bool = Field(default=False, description="已掌握题目中是否有使用全球区链接的")
+    question_evaluations: list[QuestionEvaluation] = Field(description="模棱两可和薄弱的逐题评估详情")
+    references: list[str] = Field(default_factory=list, description="参考文献列表（仅工具检索来源）")

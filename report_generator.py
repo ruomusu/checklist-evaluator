@@ -38,12 +38,20 @@ class ReportGenerator:
                      f"⚠️ 模棱两可 {report.ambiguous_count} | "
                      f"❌ 薄弱 {report.weak_count}")
         lines.append("")
+
+        # 聚合已掌握题目（一行展示）
+        if report.mastered_ids:
+            lines.append(f"✅ **已掌握题目**：{', '.join(report.mastered_ids)}")
+            if report.mastered_has_global_links:
+                lines.append("💡 提示：部分已掌握题目使用了全球区链接，建议替换为中国区链接")
+            lines.append("")
+
         lines.append("---")
         lines.append("")
 
+        # 只展示模棱两可和薄弱的题目
         for ev in report.question_evaluations:
             emoji = self._level_emoji(ev.mastery_level)
-            # 题号后展示原题文本
             if ev.question:
                 lines.append(f"**{ev.question_id}: {ev.question}** {emoji} {ev.mastery_level.value}")
             else:
@@ -55,7 +63,7 @@ class ReportGenerator:
                 lines.append(f"- 💡 {ev.notes}")
             lines.append("")
 
-        # 参考文献板块
+        # 参考文献板块（仅在有工具检索来源时输出）
         if report.references:
             lines.append("---")
             lines.append("")

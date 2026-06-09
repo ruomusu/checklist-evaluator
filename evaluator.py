@@ -237,7 +237,7 @@ class Evaluator:
             log(f"原始响应前 200 字符: {cleaned[:200]}", stage="ERROR", level=logging.DEBUG)
             raise ValueError(f"LLM 返回的内容无法解析为 JSON: {e}")
 
-        # 构建逐题评估
+        # 构建逐题评估（只包含模棱两可和薄弱）
         evaluations = []
         for item in data.get("question_evaluations", []):
             evaluations.append(QuestionEvaluation(
@@ -248,8 +248,12 @@ class Evaluator:
                 notes=item.get("notes", ""),
             ))
 
+        # 提取已掌握题目信息
+        mastered_ids = data.get("mastered_ids", [])
+        mastered_has_global_links = data.get("mastered_has_global_links", False)
+
         # 统计各等级数量
-        mastered = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.MASTERED)
+        mastered = len(mastered_ids)
         ambiguous = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.AMBIGUOUS)
         weak = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.WEAK)
 
@@ -263,6 +267,8 @@ class Evaluator:
             mastered_count=mastered,
             ambiguous_count=ambiguous,
             weak_count=weak,
+            mastered_ids=mastered_ids,
+            mastered_has_global_links=mastered_has_global_links,
             question_evaluations=evaluations,
             references=data.get("references", []),
         )
