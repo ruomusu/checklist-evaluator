@@ -203,9 +203,13 @@ FRONTEND_HTML = """<!DOCTYPE html>
             font-size: 0.9rem;
         }
         .error-msg.active { display: block; }
+        .result-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 12px;
+        }
         .reset-btn {
             display: inline-block;
-            margin-top: 20px;
             padding: 10px 24px;
             background: #f0f0f0;
             border: none;
@@ -215,6 +219,18 @@ FRONTEND_HTML = """<!DOCTYPE html>
             font-size: 0.9rem;
         }
         .reset-btn:hover { background: #e0e0e0; }
+        .download-btn {
+            display: inline-block;
+            padding: 10px 24px;
+            background: #52c41a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+        .download-btn:hover { background: #45a814; }
     </style>
 </head>
 <body>
@@ -250,7 +266,10 @@ FRONTEND_HTML = """<!DOCTYPE html>
 
         <div class="result-card" id="resultCard">
             <div class="result-content" id="resultContent"></div>
-            <button class="reset-btn" id="resetBtn">重新评估</button>
+            <div class="result-actions">
+                <button class="reset-btn" id="resetBtn">重新评估</button>
+                <button class="download-btn" id="downloadBtn">📥 下载报告</button>
+            </div>
         </div>
     </div>
 
@@ -268,6 +287,7 @@ FRONTEND_HTML = """<!DOCTYPE html>
         const resultContent = document.getElementById('resultContent');
         const errorMsg = document.getElementById('errorMsg');
         const resetBtn = document.getElementById('resetBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
         const studentName = document.getElementById('studentName');
 
         fileInput.addEventListener('change', function() {
@@ -435,6 +455,22 @@ FRONTEND_HTML = """<!DOCTYPE html>
             fileText.innerHTML = '点击选择文件或拖拽到此处<br><small>支持 .md / .txt / .docx 格式</small>';
             submitBtn.disabled = true;
             resultContent.textContent = '';
+        });
+
+        downloadBtn.addEventListener('click', function() {
+            const content = resultContent.textContent;
+            if (!content) return;
+            const name = studentName.value || '新人';
+            const filename = '评估报告_' + name + '_' + new Date().toISOString().slice(0,10) + '.md';
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         });
     </script>
 </body>
