@@ -42,7 +42,7 @@ FRONTEND_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新人 Checklist 自动评估系统</title>
+    <title>Checklist 自动评估系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -235,8 +235,8 @@ FRONTEND_HTML = """<!DOCTYPE html>
 </head>
 <body>
     <div class="container">
-        <h1>📋 新人 Checklist 自动评估系统</h1>
-        <p class="subtitle">上传答卷文件，系统将自动评估并生成报告</p>
+        <h1>📋 Checklist 自动评估系统</h1>
+        <p class="subtitle">上传作答文件，系统将自动评估并生成报告</p>
 
         <div class="upload-card" id="uploadCard">
             <div class="form-group">
