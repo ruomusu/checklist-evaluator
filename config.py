@@ -80,6 +80,7 @@ class Config:
 
     # --- 本地文件模式 ---
     KNOWLEDGE_LOCAL_FILE: str = os.getenv("KNOWLEDGE_LOCAL_FILE", "sample_knowledge_base.json")
+    KNOWLEDGE_BASE_DIR: str = os.getenv("KNOWLEDGE_BASE_DIR", "./knowledge_base")
 
     # --- API 模式 ---
     KNOWLEDGE_API_URL: str = os.getenv("KNOWLEDGE_API_URL", "https://kb.internal.example.com")

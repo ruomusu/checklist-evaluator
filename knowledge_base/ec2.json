@@ -1,0 +1,218 @@
+[
+  {
+    "question_id": "Q1",
+    "question": "请说明 t2、t3、t3a、t4g 实例类型的主要区别（包括架构、处理器、性价比）",
+    "reference_answer": "T 系列均为可突增实例类型，共享同一套 CPU 积分机制（基线以下积累积分，突增时消耗积分，积分耗尽则限速）。支持标准模式（受限）和无限模式（额外付费突增）。具体区别：t2 是上一代可突增实例，基于 Xen 虚拟化，采用 Intel Xeon 处理器，不默认开启 Unlimited 模式。t3 基于 Nitro 平台，采用 Intel Xeon 可扩展处理器（默认 i 系列），默认开启 Unlimited 模式，相比 t2 性价比提升约 30%，提供最佳峰值性价比的 x86 工作负载。t3a 基于 Nitro 平台，采用 AMD 第一代 EPYC 处理器，相比 t3 花费降低约 10%，是成本最低的 x86 可突增实例。t4g 基于 Nitro 平台，采用 AWS Graviton2 处理器（Arm Neoverse N1 内核），相比 t3 性价比提升约 40%、花费降低约 20%，是成本最低的 EC2 实例，适合 ARM 兼容的工作负载。实例类型命名规则中：无后缀或后缀 i/a 一般为 x86，后缀 g 一般为 ARM，后缀 d 表示实例存储。注意：t4g（ARM 架构）不支持 Windows 操作系统。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances.html",
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+      "https://aws.amazon.com/ec2/instance-types/t4/"
+    ]
+  },
+  {
+    "question_id": "Q2",
+    "question": "请解释 Nitro 架构与 Xen 架构的核心区别，并列举属于各架构的实例系列",
+    "reference_answer": "Xen 和 Nitro 都是虚拟化技术，通过抽象层将物理资源虚拟化并高效分配。Xen 架构：早期 EC2 使用的开源虚拟化平台，直接运行在硬件上，由 Dom0 管理域控制 I/O 调度，采用完整 Xen hypervisor，虚拟化开销较高（尤其在网络/存储 I/O），启动较慢（约 20 秒，需启动完整 Xen Dom0），EBS 优化为可选功能。典型 Xen 实例包括：M4 及以下、T2、C4、R4、X1、D2、H1、I3 及以下、F1、G3、P2、P3。Nitro 架构：AWS 自研的硬件软件混合虚拟化平台，采用轻量级 hypervisor（基于 KVM），将网络、存储、安全等虚拟化功能卸载到专用 Nitro Card 硬件上，减少主机 CPU 负担。性能接近裸机（CPU 开销不到 1%），网络支持高达 200Gbps（ENA v2），启动更快（约 1 秒），EBS 优化默认开启。引入 Nitro Security Chip 保障硬件级安全。典型 Nitro 实例包括：T3、M5、C5、R5、M6i、C6g 及更新的实例系列。核心虚拟化功能包括：CPU 虚拟化、内存虚拟化、I/O 虚拟化、存储虚拟化、网络虚拟化。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+      "https://aws.amazon.com/ec2/nitro/",
+      "https://repost.aws/zh-Hans/knowledge-center/boot-error-linux-nitro-instance"
+    ]
+  },
+  {
+    "question_id": "Q3",
+    "question": "从 M4 实例类型切换到 M5 实例类型时需要考虑什么？切换失败如何排查？",
+    "reference_answer": "M4 是 Xen-based（HVM 虚拟化），M5 是 Nitro-based（KVM 虚拟化），涉及整个系统架构的革新。M5 将虚拟化功能卸载到专用硬件上，网络和存储由专用 Nitro Card 处理。切换前必须确保：1) 激活实例联网的 ENA Support 属性；2) 安装弹性网络适配器（ENA）驱动程序；3) 在实例的 initramfs 镜像中加载 NVMe 模块（因为 Nitro 实例的 EBS 卷通过 NVMe 接口暴露）。推荐方法：从现有实例创建 AMI，确保 AMI 中包含 ENA 和 NVMe 驱动，然后通过该 AMI 启动 M5 实例。切换失败时检查以上三项是否都已正确配置。注意：Xen 到 Nitro 迁移时，静态 IP 或自定义 DNS、现有网络接口卡上的网络设备配置都可能丢失。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resize-limitations.html",
+      "https://repost.aws/zh-Hans/knowledge-center/boot-error-linux-nitro-instance"
+    ]
+  },
+  {
+    "question_id": "Q4",
+    "question": "EC2 实例、Droplet 和 DomU 之间的关系是什么？",
+    "reference_answer": "DomU 是最底层的技术概念，指 Xen 虚拟化架构中的客户机（Guest Domain），与 Dom0（管理域）相对。Xen-based 的 EC2 实例本质上就是运行在 Xen hypervisor 上的 DomU。Droplet 是实例在底层的名称/代号。EC2 Instance 是 AWS 的产品层面概念，基于 Nitro 或 Xen 的虚拟机。早期其他云平台（如 DigitalOcean）的 Droplet 也曾基于 Xen 虚拟化。对于 Nitro-based 实例，不再使用 Xen 的 Dom0/DomU 概念，而是使用轻量级 KVM hypervisor。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/virtualization_types.html"
+    ]
+  },
+  {
+    "question_id": "Q5",
+    "question": "EC2 实例生命周期有哪些阶段？停止/启动与重启有什么区别？",
+    "reference_answer": "EC2 实例生命周期包括：pending（启动中）、running（运行中）、stopping（停止中）、stopped（已停止）、shutting-down（终止中）、terminated（已终止）。停止再启动（Stop and Start）：停止后 AWS 不再对实例计算资源计费，但仍会产生 EBS 卷和弹性 IP 等附加资源费用；虚拟机完全关闭，物理主机资源被释放；下次启动可能分配到不同宿主机；非弹性 IP 的公网 IP 会改变；私有 IP 默认保留；实例存储数据丢失但 EBS 卷数据保留；比重启耗时更长。重启（Reboot）：继续计费；物理主机不变；仅操作系统层面重启；所有 IP 地址不变；所有存储数据（包括实例存储）全部保留；启动更快。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html",
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html",
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-reboot.html"
+    ]
+  },
+  {
+    "question_id": "Q6",
+    "question": "一个实例可以关联多个 ENI 吗？需要注意什么？",
+    "reference_answer": "可以。一个 EC2 实例可以附加多个弹性网络接口（ENI）。可用 ip link 查看网络接口，ip route 查看系统路由表。注意事项：1) 不同实例类型支持的 ENI 数量和每个 ENI 的私有 IP 数量不同；2) 主 ENI（eth0）不能被分离；3) 每个 ENI 可独立绑定安全组进行流量控制；4) 默认路由表只指向主 ENI，如果希望特定流量通过辅助 ENI 发出，需要在操作系统中手动添加路由规则（sudo ip route add 目标网络 via 网关IP dev 接口），否则流量仍从主 ENI 发出；5) 实例内部网络配置不能覆盖 VPC 路由表配置；6) 临时路由重启后失效，需写入配置文件持久化。用途包括：网络流量分离、高可用性和故障转移。不能更改请求者托管式网络接口（由 AWS 服务代为创建的 ENI）的属性。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html"
+    ]
+  },
+  {
+    "question_id": "Q7",
+    "question": "ENI 是否可以配置多个 IP 地址？ENI 是否可以关联多个安全组？安全组是否可以关联多个 ENI？",
+    "reference_answer": "三个问题的答案都是可以。1) ENI 可配置多个 IP 地址：私有 IP 可以配置多个（数量取决于实例类型），公有 IP 需要通过弹性 IP 分配。2) ENI 可关联多个安全组：前提是 ENI 状态为 in-use 或 available，ENI 和安全组必须在同一个 VPC 中，用户需要有 IAM 权限。注意多个安全组的规则是叠加生效的，会影响出入站流量。3) 安全组可关联多个 ENI：附加到实例的 ENI 要求实例处于 running 或 stopped 状态，在同一 VPC 内，需 IAM 权限。关键点：安全组是作用在 ENI 层面的（有状态），ACL 作用在子网层面（无状态）。因为安全组是有状态的且默认规则允许同一安全组内成员通信，所以拥有同一安全组的 EC2 实例可以互相通信。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html",
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html"
+    ]
+  },
+  {
+    "question_id": "Q8",
+    "question": "系统状态检查和实例状态检查失败分别表示什么？如何解决？",
+    "reference_answer": "EC2 提供三种状态检查：System Status Check、Instance Status Check、Attached EBS Status Check。System Status Check（系统状态检查）：表示底层硬件或基础设施层面出现问题（如物理主机故障、网络连接丢失、电源中断等），解决方案是 Stop 再 Start 实例（使其迁移到健康的物理主机）。Instance Status Check（实例状态检查）：表示实例操作系统层面出现问题（如内核崩溃、文件系统满、网络配置错误等），解决方案是先尝试 Reboot，如果不行则需具体排查。排查工具：journalctl 查看系统日志，/var/log 目录下的日志文件。常用命令：journalctl -b | grep 'panic|oops|BUG|OOM|full'。注意：当 /home 满了会导致系统无法更新日志、无法安装更新、无法创建新进程。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-system-instance-status-check.html"
+    ]
+  },
+  {
+    "question_id": "Q9",
+    "question": "是否可以查看实例的内存指标和进程详情？如何实现？",
+    "reference_answer": "默认情况下 CloudWatch 不收集内存指标和进程详情。需要额外安装 CloudWatch Agent 来实现。步骤：1) 配置 IAM 角色，附加 CloudWatchAgentServerPolicy 策略；2) SSH 到实例安装 Agent：sudo yum install -y amazon-cloudwatch-agent；3) 运行配置向导或手动编写配置文件（指定要收集的内存、磁盘、进程等指标）；4) 应用配置文件启动 Agent；5) 验证排查：查看 Agent 日志确认数据是否上报。需要开启 detailed monitoring。进程详情也需要通过 CloudWatch Agent 的 procstat 插件来收集。可使用 amazon-cloudwatch-agent-ctl -h 查看 Agent 管理命令。",
+    "reference_links": [
+      "https://repost.aws/knowledge-center/cloudwatch-push-metrics-ec2",
+      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html",
+      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/create-cloudwatch-agent-configuration-file.html"
+    ]
+  },
+  {
+    "question_id": "Q10",
+    "question": "什么是计划事件（Scheduled Events）？有哪些类型？客户在哪里查看通知？能否重新安排？",
+    "reference_answer": "计划事件是一种通知/预警系统，告知用户 EC2 实例所在的底层即将进行维护，给客户预留时间处理实例以避免应用程序意外中断。事件类型：1) instance-stop 2) instance-retirement（退役）3) instance-reboot 4) system-reboot 5) system-maintenance（维护）。查看方式：1) AWS 发送的邮件通知（在 AWS Health 的 Preferences 中启用，通过 Amazon SNS 发送到邮箱或其他终端）；2) EC2 控制台查看实例的计划事件（状态显示 running [scheduled]）；3) AWS CLI：aws ec2 describe-instance-status --instance-id <ID> --region <区域>。关于重新安排：计划事件由 AWS 管理，用户无法自行创建。但可以：查看事件、自定义通知、重新安排某些已计划事件、为计划事件创建自定义事件窗口。重新安排的限制：1) 只有具有截止日期的事件可被重新安排，且只能安排到截止日期之前；2) 只有尚未开始的事件才能重新安排，距开始时间不足 5 分钟的无法改期；3) 新事件时间距当前时间必须至少 60 分钟；4) 控制台重新安排多个事件时，截止日期由最早的事件决定。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-instances-status-check_sched.html"
+    ]
+  },
+  {
+    "question_id": "Q11",
+    "question": "什么是 AMI？包含哪些内容？",
+    "reference_answer": "AMI（Amazon Machine Image）是启动 EC2 实例的模板，包含创建实例所需的所有信息。包含内容：1) 根卷的快照：包括实例的整个根文件系统、操作系统、安装的软件、配置文件、用户数据（如 /home 下的文件）；2) 附加的 EBS 卷：可选择是否包含实例上挂载的其他 EBS 数据卷的快照，这些卷会成为新实例启动时自动附加的卷；3) 块设备映射（Block Device Mapping）：定义所有卷的挂载方式和设备名称（如 /dev/xvda）。AMI 需要与选择的实例类型兼容，兼容性基于：区域、操作系统、处理器架构、启动许可、根设备类型、虚拟化类型。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html"
+    ]
+  },
+  {
+    "question_id": "Q12",
+    "question": "AMI 如何共享？有哪些启动许可类型？",
+    "reference_answer": "共享 AMI 即开发人员创建并提供给其他人使用的 AMI。有三种启动许可（Launch Permission）：1) Public：向所有 AWS 账户授予启动许可，任何人都可使用；2) Explicit（显式）：向特定的账户、企业（Organization）或组织单位（OU）授予启动权限，需手动添加，修改 launchPermission 属性明确指定账户 ID 或组织 ARN；3) Implicit（隐式）：所有权即权限，AMI 所有者自己无需配置即可使用。总有效权限 = 所有者 + explicit/public 授予的权限。设为公开的方式：控制台中选择 AMI → Actions → Edit Permissions → AMI 可用性（公开）。与企业或 OU 共享时，组织下所有子账号都能访问该 AMI。注意：加密的 AMI 共享时需要同时授予 KMS 密钥的使用权限，且加密的 AMI 只能创建加密的 EC2 实例。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sharing-amis.html"
+    ]
+  },
+  {
+    "question_id": "Q13",
+    "question": "Quick Start AMI、Community AMI 和 Marketplace AMI 有什么区别？",
+    "reference_answer": "Quick Start AMI：由亚马逊或合作伙伴官方配置的模板，经过优化和验证，可快速启动常用操作系统和软件栈。Community AMI：由用户或开发者共享的模板，未经 AWS 审核，使用时需自行评估安全性。Marketplace AMI：来自第三方提供商的模板，经过亚马逊验证和审核，通常包含商业软件，可能需要额外付费（软件许可费）。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html"
+    ]
+  },
+  {
+    "question_id": "Q14",
+    "question": "无法 SSH 连接到 EC2 实例时如何排查？",
+    "reference_answer": "排查步骤：1) 确认实例是否处于 running 状态；2) 确认密钥对是否正确（私钥权限需为 400 或 600，用户需有对应权限，/home/user/.ssh/authorized_keys 中需有对应公钥）；3) 确认连接用户名是否正确（如 ec2-user、ubuntu 等）；4) 网络排查：使用 ssh -v 进行 verbose 连接，如果出现 timeout 则是网络问题，使用 telnet IP 22 测试端口连通性，如果不是 22 端口用 22 去连会出现 connection refused；5) 网络层排查：安全组是否放行 SSH（TCP 22）入站、路由表是否正确（实例子网是否有到 Internet Gateway 的路由）、网络 ACL 是否允许、SSH 网络协议版本是否匹配。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+    ]
+  },
+  {
+    "question_id": "Q15",
+    "question": "启动实例时遇到 Insufficient Instance Capacity 如何解决？",
+    "reference_answer": "Insufficient Instance Capacity 表示在选择的可用区中没有足够的空闲硬件支持请求的特定实例类型。解决方案：1) 不指定可用区，让 AWS 自动选择有容量的 AZ；2) 使用 Spot 实例时采用 capacity-optimized 分配策略；3) 稍后再试（等待容量释放）；4) 尝试功能相同但系列不同的实例类型。三种特殊情况：1) EC2 队列已配置但未到 Capacity Block 开始日期，需等待；2) 已启用 Capacity Block 但容量不足，可扩容或改用 On-Demand；3) 未使用 Capacity Block 配置 EC2 队列，可将实例启动到容量块中或更换更大实例，库存不足时更换 AZ。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/troubleshooting-launch.html",
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-capacity-blocks.html"
+    ]
+  },
+  {
+    "question_id": "Q16",
+    "question": "购买了预留实例是否保证总能启动实例而不会遇到容量问题？",
+    "reference_answer": "不一定。预留实例（Reserved Instance）本质上是一种计费折扣（可理解为优惠券），分为区域级（Regional）和可用区级（Zonal）两种范围。区域级 RI 提供折扣但不提供容量预留；可用区级 RI 除折扣外还提供特定 AZ 的容量预留。如果需要确保始终有容量可用，应使用可用区级 RI 或单独的容量预留（Capacity Reservation）。容量预留是独立的机制，会为你在指定 AZ 预留指定类型的实例容量。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/reserved-instances-scope.html"
+    ]
+  },
+  {
+    "question_id": "Q17",
+    "question": "使用 Spot 实例时需要注意什么？",
+    "reference_answer": "Spot 实例使用 AWS 的空闲可用容量（spared available capacity），价格最多可节省 90%，但可能被中断。关键注意事项：1) 适合不怕偶尔中断的工作负载（批处理、CI/CD、大数据、容错架构）；2) 中断前约 2 分钟会收到 Rebalance Recommendation（通知实例处于较高中断风险中）；3) 需要设计应用程序的容错机制（状态外部化、checkpoint、优雅关闭）；4) 可结合多种实例类型和可用区提高可用性；5) 使用 Spot Fleet 或 EC2 Fleet 时采用 capacity-optimized 策略选择中断概率最低的池。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+    ]
+  },
+  {
+    "question_id": "Q18",
+    "question": "Dedicated Hosts 和 Dedicated Instances 有什么区别？",
+    "reference_answer": "两者都是为满足合规性要求的客户提供的物理隔离选项。Dedicated Hosts（专用主机）：一台完全可见并可控制的物理主机，用户可以精确控制实例在特定主机上的放置，支持自带许可证（BYOL），可查看物理主机的 socket 和核心信息，适合有许可证合规要求的场景。Dedicated Instances（专用实例）：运行在专属硬件上（与其他客户物理隔离），但物理主机不可见，不提供 BYOL 支持，由 AWS 自动分配到专用硬件上，用户无法控制具体放置在哪台物理机。核心区别：可见性和控制力度不同，BYOL 支持与否。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/dedicated-hosts-overview.html"
+    ]
+  },
+  {
+    "question_id": "Q19",
+    "question": "如何配置 Instance Profile？它的用途是什么？",
+    "reference_answer": "Instance Profile 是 EC2 使用 IAM Role 的载体/容器。用途：将 AWS 权限授予 EC2 实例，避免将 Access Key/Secret Key 硬编码到应用程序或配置文件中。配置方式：在 IAM 控制台创建 IAM Role（选择 EC2 为信任实体），控制台创建时会自动创建同名的 Instance Profile（使用 CLI 创建时需手动创建 Instance Profile 并关联 Role）。然后在 EC2 实例上附加该 Instance Profile。关键点：1) 一个 Instance Profile 只能包含一个 IAM Role；2) 一个 IAM Role 可以被包含在多个 Instance Profile 中；3) Instance Profile 只有通过控制台创建 Role 时才会自动创建（在控制台中看不见独立的 Instance Profile 对象）；4) CLI 中需要使用 aws iam create-instance-profile 和 aws iam add-role-to-instance-profile 手动创建和关联；5) IAM Role 的信任策略（Trust Policy）中 Principal 的 Service 应为 ec2.amazonaws.com。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html",
+      "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html"
+    ]
+  },
+  {
+    "question_id": "Q20",
+    "question": "EC2 实例的购买选项有哪些？各自适用什么场景？",
+    "reference_answer": "EC2 提供以下主要购买选项：1) On-Demand（按需）：按秒/小时计费，无承诺，适合短期或不可预测的工作负载。2) Reserved Instances（RI 预留实例）：1 年或 3 年承诺，最高可节省 72%，适合稳定运行的生产环境。分为 Standard RI（不可变更实例系列）和 Convertible RI（可转换）。3) Savings Plans：承诺一定金额的使用量（按每小时承诺消费金额），比 RI 更灵活，可跨实例系列、区域。4) Spot Instances：利用 AWS 空闲容量，最高可节省 90%，但可能被中断，适合容错性高的批处理、CI/CD、大数据分析。5) Dedicated Hosts（专用主机）：整台物理服务器专属使用，适合有合规要求或 BYOL 需求。6) Dedicated Instances（专用实例）：运行在专属硬件上但不暴露物理主机，适合隔离需求。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
+    ]
+  },
+  {
+    "question_id": "Q21",
+    "question": "增强联网使用什么技术？支持增强联网的实例有哪些额外网络指标？如何查看？",
+    "reference_answer": "增强联网技术：1) Elastic Network Adapter (ENA)：所有基于 Nitro 的实例和部分基于 Xen 的实例支持；2) Intel 82599 虚拟功能（VF）接口：C3、C4、D2、I2、M4（不含 m4.16xlarge）和 R3 实例支持。启用增强网络的实例提供以下额外指标：1) bw_in_allowance_exceeded：因接收带宽超限而丢弃的数据包数；2) bw_out_allowance_exceeded：因发送带宽超限而丢弃的数据包数；3) pps_allowance_exceeded：因每秒数据包数超限而丢弃的数据包数；4) conntrack_allowance_exceeded：因并发连接数超限而丢弃的数据包数；5) linklocal_allowance_exceeded：因与 AWS 本地服务的带宽超限而丢弃的数据包数。查看方式：通过安装 CloudWatch Agent 收集并上报这些 ENA 驱动层面的指标。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enhanced-networking.html",
+      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html"
+    ]
+  },
+  {
+    "question_id": "Q22",
+    "question": "如果 Amazon Linux 2 实例中没有 ENA 和 NVMe 驱动，如何安装？",
+    "reference_answer": "安装步骤（适用于 Amazon Linux / Ubuntu 等）：1) 更新系统包：sudo apt-get update -y（Ubuntu）或 sudo yum update -y（Amazon Linux）；2) 升级内核（包含 ENA 和 NVMe 驱动）：sudo apt-get install --only-upgrade -y linux-aws（Ubuntu）或 sudo yum install -y kernel（Amazon Linux）；3) 重启实例：sudo reboot，使新内核生效。对于 Amazon Linux 2，ENA 和 NVMe 驱动通常已包含在默认内核中，如果缺失需要更新到最新内核版本。安装完成后需验证：ethtool -i eth0 确认 ENA 驱动、lsmod | grep nvme 确认 NVMe 模块加载。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enhanced-networking-ena.html",
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nvme-ebs-volumes.html"
+    ]
+  },
+  {
+    "question_id": "Q23",
+    "question": "全虚拟化和半虚拟化（PV）有什么区别？",
+    "reference_answer": "两者都允许在同一台主机上运行多个操作系统实例。全虚拟化（HVM）：在硬件和操作系统之间加装一个软件层 VMM（虚拟机监控器），为虚拟机提供完整的硬件模拟环境。客户操作系统无需修改即可运行，可以虚拟化 CPU、内存、主板、显卡、网卡等（但无法虚拟 USB 等硬件端口）。运行效率取决于硬件资源和 CPU 虚拟化指令支持（如 Intel VT-x、AMD-V）。半虚拟化（PV）：以全虚拟化为底层支撑，但需要修改客户操作系统内核，增加专用 API 接口（Hypercall）来优化与 hypervisor 的通信。由于 CPU 不直接支持虚拟化指令（或为了更高效率），通过软件接口代替实际硬件功能。AWS 当前推荐使用 HVM 虚拟化类型的实例（所有现代实例类型均为 HVM），PV 已基本被淘汰。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/virtualization_types.html"
+    ]
+  },
+  {
+    "question_id": "Q24",
+    "question": "什么是置放群组（Placement Group）？有哪些类型？如何将实例启动到指定置放群组？",
+    "reference_answer": "置放群组用于影响一组相互依赖的 EC2 实例的底层硬件放置策略，以满足工作负载需求。一个实例只能属于一个置放群组，名称在 AWS 账户中必须唯一。三种类型：1) 集群（Cluster）：将一个可用区内的实例放在物理上靠近的位置，提供低延迟、高带宽的网络性能，适合 HPC、紧耦合应用；2) 分区（Partition）：将实例分布在不同的逻辑分区中，每个分区对应不同的底层硬件机架，一个分区的故障不影响其他分区，适合大规模分布式和重复的工作负载（如 Hadoop、Kafka、Cassandra）；3) 分布（Spread）：将一小组实例严格放置在不同的基础硬件上，最大限度减少相关故障，每个 AZ 最多 7 个实例，适合关键业务的小规模高可用部署。启动方式：创建置放群组后，在启动实例时指定 Placement Group 参数即可。已运行的实例可以停止后修改置放设置。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html",
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups-cluster.html"
+    ]
+  },
+  {
+    "question_id": "Q25",
+    "question": "Linux 实例如何配置 EBS 卷自动挂载？如何排查基于 Nitro 的 Linux 实例的启动错误？",
+    "reference_answer": "自动挂载配置：编辑 /etc/fstab 文件（sudo cat /etc/fstab 查看当前配置），添加挂载条目，格式为：设备名/UUID 挂载点 文件系统类型 挂载选项 dump fsck。建议使用 UUID 而非设备名（因为 NVMe 设备名可能变化），并添加 nofail 选项防止挂载失败时阻止启动。排查 Nitro 实例启动错误：1) 检查 /etc/fstab 是否有错误的挂载条目（设备不存在会导致启动卡住）；2) 确认 NVMe 和 ENA 驱动是否正确安装在 initramfs 中；3) 使用 EC2 Serial Console 或从另一实例挂载根卷进行排查；4) 检查 grub 配置是否正确引用了根设备。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-using-volumes.html",
+      "https://repost.aws/zh-Hans/knowledge-center/boot-error-linux-nitro-instance"
+    ]
+  }
+]

@@ -17,6 +17,7 @@ from models import (
     KnowledgeItem,
     StudentAnswer,
     QuestionEvaluation,
+    ReadingGuideItem,
     EvaluationReport,
     MasteryLevel,
 )
@@ -272,7 +273,9 @@ class Evaluator:
             mastered_ids=mastered_ids,
             mastered_has_global_links=mastered_has_global_links,
             question_evaluations=evaluations,
-            references=data.get("references", []),
+            reading_guide=[
+                ReadingGuideItem(**item) for item in data.get("reading_guide", [])
+            ],
         )
 
     def evaluate(

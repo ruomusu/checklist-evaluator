@@ -41,6 +41,13 @@ class QuestionEvaluation(BaseModel):
     notes: str = Field(default="", description="可选提醒，如链接区域建议")
 
 
+class ReadingGuideItem(BaseModel):
+    """单题推荐阅读"""
+    question_id: str = Field(description="题目编号")
+    question_summary: str = Field(description="题目简述")
+    resources: list[str] = Field(default_factory=list, description="推荐资源列表")
+
+
 class EvaluationReport(BaseModel):
     """评估报告"""
     student_name: str = Field(default="新人", description="新人姓名")
@@ -51,4 +58,4 @@ class EvaluationReport(BaseModel):
     mastered_ids: list[str] = Field(default_factory=list, description="Excellent 的题目编号列表")
     mastered_has_global_links: bool = Field(default=False, description="Excellent 题目中是否有使用全球区链接的")
     question_evaluations: list[QuestionEvaluation] = Field(description="Satisfactory 和 Fail 的逐题评估详情")
-    references: list[str] = Field(default_factory=list, description="参考文献列表（仅工具检索来源）")
+    reading_guide: list[ReadingGuideItem] = Field(default_factory=list, description="推荐阅读与提升指南")

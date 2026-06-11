@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>Checklist 自动评估系统</title>
+    <style>
+        :root {
+            --excellent: #34c759;
+            --excellent-bg: #f0faf3;
+            --satisfactory: #f5a623;
+            --satisfactory-bg: #fef9f0;
+            --fail: #ff6b6b;
+            --fail-bg: #fff5f5;
+            --primary: #0071e3;
+            --primary-hover: #0060c0;
+            --bg: #fbfbfd;
+            --card-bg: #ffffff;
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: #e8e8ed;
+            --shadow: 0 4px 24px rgba(0,0,0,0.06);
+            --shadow-sm: 0 2px 12px rgba(0,0,0,0.04);
+            --radius: 16px;
+            --radius-sm: 12px;
+            --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif;
+            --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 60px 24px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { width: 100%; max-width: 860px; margin: 0 auto; }
+
+        /* Header */
+        .header { text-align: center; margin-bottom: 48px; }
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+        .header p { font-size: 1.05rem; color: var(--text-secondary); font-weight: 400; letter-spacing: 0.2px; }
+
+        /* Service Switcher */
+        .switcher {
+            display: inline-flex;
+            background: #f2f2f7;
+            border-radius: var(--radius-sm);
+            padding: 4px;
+            margin-bottom: 32px;
+        }
+        .switcher-row { display: flex; justify-content: center; margin-bottom: 28px; }
+        .switcher button {
+            padding: 10px 28px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            letter-spacing: 0.3px;
+        }
+        .switcher button.active {
+            background: var(--card-bg);
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .switcher button:hover:not(.active) { color: var(--text); }
+
+        /* Name Row */
+        .name-row {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 28px;
+        }
+        .name-row label { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+        .name-row input {
+            flex: 1; padding: 12px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            background: var(--card-bg);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .name-row input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
+
+        /* Mode Switcher (smaller) */
+        .mode-switcher { margin-bottom: 24px; }
+        .mode-switcher .switcher { padding: 3px; }
+        .mode-switcher .switcher button { padding: 8px 20px; font-size: 0.85rem; }
+
+        /* File Upload */
+        .file-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 48px 32px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            border: 2px dashed var(--border);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            margin-bottom: 24px;
+        }
+        .file-card:hover { border-color: var(--primary); background: #f8fbff; }
+        .file-card.has-file { border-color: var(--excellent); background: var(--excellent-bg); }
+        .file-card input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .file-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .file-card .text { color: var(--text-secondary); font-size: 0.92rem; }
+        .file-card .filename { color: var(--excellent); font-weight: 600; font-size: 0.95rem; }
+
+        /* Question Cards */
+        .questions-container { animation: fadeIn 0.3s ease; }
+        .question-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            animation: slideUp 0.3s ease backwards;
+        }
+        .question-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+        .question-card .q-title {
+            font-size: 0.92rem; font-weight: 600; color: var(--text);
+            margin-bottom: 12px; line-height: 1.5; letter-spacing: 0.1px;
+        }
+        .question-card .q-id { color: var(--primary); font-weight: 700; }
+        .question-card textarea {
+            width: 100%; min-height: 90px; padding: 14px 16px;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 0.9rem; line-height: 1.6; resize: vertical;
+            font-family: var(--font); background: #fafafa;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        .question-card textarea:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.1); background: var(--card-bg);
+        }
+        .question-card textarea::placeholder { color: #c7c7cc; }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%; padding: 16px;
+            background: var(--primary); color: #fff;
+            border: none; border-radius: var(--radius-sm);
+            font-size: 1.05rem; font-weight: 600;
+            cursor: pointer; letter-spacing: 0.3px;
+            transition: background 0.2s, transform 0.15s;
+        }
+        .submit-btn:hover { background: var(--primary-hover); }
+        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn:disabled { background: #d1d1d6; cursor: not-allowed; transform: none; }
+
+        /* Progress */
+        .status-bar { display: none; text-align: center; padding: 48px 0; animation: fadeIn 0.3s ease; }
+        .status-bar.active { display: block; }
+        .progress-track {
+            width: 100%; max-width: 440px; margin: 0 auto 20px;
+            background: #f2f2f7; border-radius: 20px; height: 8px; overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--primary), #5ac8fa);
+            border-radius: 20px; transition: width 0.6s ease;
+        }
+        .progress-pct { color: var(--primary); font-weight: 700; font-size: 1.4rem; margin-bottom: 12px; letter-spacing: -0.5px; }
+        .progress-msg { color: var(--text-secondary); font-size: 0.92rem; }
+
+        /* Result */
+        .result-card {
+            display: none; background: var(--card-bg);
+            border-radius: var(--radius); padding: 36px 32px;
+            box-shadow: var(--shadow); margin-top: 32px;
+            animation: slideUp 0.4s ease;
+        }
+        .result-card.active { display: block; }
+        .result-content {
+            font-family: var(--mono); font-size: 0.86rem; line-height: 1.8;
+            white-space: pre-wrap; word-break: break-word; color: #2c3e50;
+            min-height: 80px; letter-spacing: 0.2px;
+        }
+        /* 分组区块颜色标记 */
+        .result-content .section-excellent { margin: 20px 0; }
+        .result-content .section-satisfactory { margin: 20px 0; }
+        .result-content .section-fail { margin: 20px 0; }
+        .result-content .question-block-excellent { border-left: 4px solid var(--excellent); padding-left: 16px; margin: 16px 0; border-radius: 4px; }
+        .result-content .question-block-satisfactory { border-left: 4px solid var(--satisfactory); padding-left: 16px; margin: 16px 0; border-radius: 4px; }
+        .result-content .question-block-fail { border-left: 4px solid var(--fail); padding-left: 16px; margin: 16px 0; border-radius: 4px; }
+        .cursor { display: inline-block; width: 2px; height: 1.1em; background: var(--primary); animation: blink 0.7s step-end infinite; vertical-align: text-bottom; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Error */
+        .error-msg {
+            display: none; background: var(--fail-bg); border: 1.5px solid #ffd4d4;
+            border-radius: var(--radius-sm); padding: 16px 20px; margin-top: 16px;
+            color: var(--fail); font-size: 0.9rem; font-weight: 500;
+            animation: fadeIn 0.3s ease;
+        }
+        .error-msg.active { display: block; }
+
+        /* Buttons row */
+        .btn-row { display: flex; gap: 12px; margin-top: 24px; }
+        .btn-secondary {
+            padding: 12px 28px; border: none; border-radius: var(--radius-sm);
+            cursor: pointer; font-size: 0.9rem; font-weight: 500;
+            transition: all 0.2s; letter-spacing: 0.2px;
+        }
+        .btn-reset { background: #f2f2f7; color: var(--text-secondary); }
+        .btn-reset:hover { background: #e8e8ed; color: var(--text); }
+        .btn-download { background: var(--primary); color: #fff; }
+        .btn-download:hover { background: var(--primary-hover); }
+
+        .loading-msg { text-align: center; padding: 48px; color: var(--text-secondary); font-size: 0.92rem; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Checklist 自动评估系统</h1>
+            <p>选择服务，上传作答文件或逐题输入，获取智能评估报告</p>
+        </div>
+
+        <div id="mainPanel">
+            <!-- 服务切换 -->
+            <div class="switcher-row">
+                <div class="switcher" id="serviceSwitcher"></div>
+            </div>
+
+            <!-- 姓名 -->
+            <div class="name-row">
+                <label for="studentName">姓名</label>
+                <input type="text" id="studentName" placeholder="请输入姓名">
+            </div>
+
+            <!-- 输入模式切换 -->
+            <div class="mode-switcher">
+                <div class="switcher" id="modeSwitcher">
+                    <button class="active" data-mode="file" onclick="switchMode('file',this)">上传文件</button>
+                    <button data-mode="questions" onclick="switchMode('questions',this)">逐题输入</button>
+                </div>
+            </div>
+
+            <!-- 文件上传 -->
+            <div id="fileMode">
+                <div class="file-card" id="fileCard">
+                    <input type="file" id="fileInput" accept=".md,.txt,.text,.markdown,.docx">
+                    <div class="icon">📄</div>
+                    <div id="fileText" class="text">点击或拖拽上传答卷文件<br><small style="color:#aaa;">支持 .md / .txt / .docx</small></div>
+                </div>
+            </div>
+
+            <!-- 逐题输入 -->
+            <div id="questionsMode" style="display:none;">
+                <div class="questions-container" id="questionsList">
+                    <div class="loading-msg">加载题目中...</div>
+                </div>
+            </div>
+
+            <button class="submit-btn" id="submitBtn">开始评估</button>
+        </div>
+
+        <!-- 进度 -->
+        <div class="status-bar" id="statusBar">
+            <div class="progress-pct" id="progressPercent">0%</div>
+            <div class="progress-track"><div class="progress-bar" id="progressFill"></div></div>
+            <div class="progress-msg" id="statusText">准备中...</div>
+        </div>
+
+        <!-- 错误 -->
+        <div class="error-msg" id="errorMsg"></div>
+
+        <!-- 结果 -->
+        <div class="result-card" id="resultCard">
+            <div class="result-content" id="resultContent"></div>
+            <div class="btn-row">
+                <button class="btn-secondary btn-reset" id="resetBtn">重新评估</button>
+                <button class="btn-secondary btn-download" id="downloadBtn">下载报告</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const serviceSwitcher = document.getElementById('serviceSwitcher');
+        const questionsList = document.getElementById('questionsList');
+        const submitBtn = document.getElementById('submitBtn');
+        const mainPanel = document.getElementById('mainPanel');
+        const statusBar = document.getElementById('statusBar');
+        const statusText = document.getElementById('statusText');
+        const progressFill = document.getElementById('progressFill');
+        const progressPercent = document.getElementById('progressPercent');
+        const resultCard = document.getElementById('resultCard');
+        const resultContent = document.getElementById('resultContent');
+        const errorMsg = document.getElementById('errorMsg');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const studentName = document.getElementById('studentName');
+        const fileInput = document.getElementById('fileInput');
+        const fileCard = document.getElementById('fileCard');
+        const fileText = document.getElementById('fileText');
+
+        let currentService = '';
+        let currentMode = 'file';
+        let questions = [];
+
+        function switchMode(mode, btn) {
+            currentMode = mode;
+            document.querySelectorAll('#modeSwitcher button').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('questionsMode').style.display = mode === 'questions' ? 'block' : 'none';
+            document.getElementById('fileMode').style.display = mode === 'file' ? 'block' : 'none';
+        }
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                fileCard.classList.add('has-file');
+                fileText.innerHTML = '<span class="filename">' + this.files[0].name + '</span>';
+            }
+        });
+
+        async function loadServices() {
+            try {
+                const resp = await fetch('/api/services');
+                const services = await resp.json();
+                serviceSwitcher.innerHTML = '';
+                services.forEach((svc, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = idx === 0 ? 'active' : '';
+                    btn.textContent = svc.name;
+                    btn.dataset.id = svc.id;
+                    btn.addEventListener('click', () => {
+                        currentService = svc.id;
+                        document.querySelectorAll('#serviceSwitcher button').forEach(t => t.classList.remove('active'));
+                        btn.classList.add('active');
+                        loadQuestions(svc.id);
+                    });
+                    serviceSwitcher.appendChild(btn);
+                });
+                if (services.length > 0) { currentService = services[0].id; loadQuestions(currentService); }
+            } catch(e) {
+                document.getElementById('mainPanel').innerHTML = '<div style="text-align:center;padding:40px;color:#ff6b6b;">加载服务列表失败: ' + e.message + '</div>';
+            }
+        }
+
+        async function loadQuestions(serviceId) {
+            questionsList.innerHTML = '<div class="loading-msg">加载题目中...</div>';
+            const resp = await fetch('/api/questions/' + serviceId);
+            questions = await resp.json();
+            questionsList.innerHTML = '';
+            questions.forEach((q, i) => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.style.animationDelay = (i * 0.05) + 's';
+                card.innerHTML = '<div class="q-title"><span class="q-id">' + q.question_id + '</span>: ' + q.question + '</div>' +
+                    '<textarea data-qid="' + q.question_id + '" placeholder="在此输入答案（可留空跳过）"></textarea>';
+                questionsList.appendChild(card);
+            });
+        }
+
+        submitBtn.addEventListener('click', async function() {
+            let requestBody;
+            if (currentMode === 'questions') {
+                const answers = [];
+                document.querySelectorAll('.question-card textarea').forEach(ta => {
+                    const text = ta.value.trim();
+                    if (text) answers.push({ question_id: ta.dataset.qid, answer_text: text });
+                });
+                if (answers.length === 0) { showError('请至少回答一道题目'); return; }
+                requestBody = { service_type: currentService, student_name: studentName.value || '新人', answers };
+            } else {
+                const file = fileInput.files[0];
+                if (!file) { showError('请先选择文件'); return; }
+                const text = await file.text();
+                const pattern = /##\s*(Q?\d+)\s*\n([\s\S]*?)(?=\n##\s*Q?\d+|$)/g;
+                const answers = [];
+                let match;
+                while ((match = pattern.exec(text)) !== null) {
+                    let qid = match[1]; if (!qid.startsWith('Q')) qid = 'Q' + qid;
+                    answers.push({ question_id: qid, answer_text: match[2].trim() });
+                }
+                if (answers.length === 0) {
+                    const paragraphs = text.split('\n\n').filter(p => p.trim());
+                    paragraphs.forEach((p, i) => answers.push({ question_id: 'Q' + (i+1), answer_text: p.trim() }));
+                }
+                if (answers.length === 0) { showError('无法从文件中解析出答案'); return; }
+                requestBody = { service_type: currentService, student_name: studentName.value || '新人', answers };
+            }
+
+            mainPanel.style.display = 'none';
+            statusBar.classList.add('active');
+            errorMsg.classList.remove('active');
+            resultCard.classList.remove('active');
+            resultContent.textContent = '';
+
+            let progressTimer, stepIdx = 0;
+            const steps = [
+                {pct:5,msg:'上传中...'},{pct:15,msg:'加载知识库...'},{pct:30,msg:'分析第 1 题...'},
+                {pct:45,msg:'分析第 2 题...'},{pct:55,msg:'分析第 3 题...'},{pct:65,msg:'综合评估...'},
+                {pct:80,msg:'生成报告...'},{pct:90,msg:'即将完成...'}
+            ];
+            function setProgress(p,m){progressFill.style.width=p+'%';progressPercent.textContent=p+'%';if(m)statusText.textContent=m;}
+            setProgress(steps[0].pct, steps[0].msg);
+            progressTimer = setInterval(()=>{stepIdx++;if(stepIdx<steps.length)setProgress(steps[stepIdx].pct,steps[stepIdx].msg);},3000);
+            function stopProgress(){if(progressTimer){clearInterval(progressTimer);progressTimer=null;}setProgress(100,'完成');}
+
+            try {
+                const response = await fetch('/evaluate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(requestBody) });
+                if (!response.ok) { stopProgress(); statusBar.classList.remove('active'); let d='评估出错'; try{const e=await response.json();d=e.detail||d;}catch(e){} showError(d); mainPanel.style.display='block'; return; }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let sseBuffer='', reportBuffer='', reportStarted=false;
+                while(true){
+                    const{done,value}=await reader.read(); if(done)break;
+                    sseBuffer+=decoder.decode(value,{stream:true});
+                    const messages=sseBuffer.split('\n\n'); sseBuffer=messages.pop();
+                    for(const msg of messages){
+                        if(!msg.trim())continue;
+                        let ev='message',data='';
+                        for(const line of msg.split('\n')){if(line.startsWith('event: '))ev=line.slice(7);else if(line.startsWith('data: '))data=line.slice(6);}
+                        if(ev==='progress'){statusText.textContent=data;}
+                        else if(ev==='content'){
+                            if(!reportStarted){reportStarted=true;stopProgress();statusBar.classList.remove('active');resultCard.classList.add('active');}
+                            const l=(data===' ')?'':data; reportBuffer+=(reportBuffer?'\n':'')+l;
+                            resultContent.textContent=reportBuffer;
+                            const c=document.createElement('span');c.className='cursor';resultContent.appendChild(c);
+                            resultCard.scrollTop=resultCard.scrollHeight;
+                        }else if(ev==='done'){stopProgress();statusBar.classList.remove('active');renderReport(reportBuffer);}
+                    }
+                }
+                statusBar.classList.remove('active');
+                if(reportBuffer){renderReport(reportBuffer);resultCard.classList.add('active');}
+            } catch(e) { stopProgress(); statusBar.classList.remove('active'); showError('网络连接失败'); mainPanel.style.display='block'; }
+        });
+
+        function showError(msg){ errorMsg.textContent=msg; errorMsg.classList.add('active'); }
+
+        resetBtn.addEventListener('click', function(){
+            resultCard.classList.remove('active'); mainPanel.style.display='block'; resultContent.textContent=''; errorMsg.classList.remove('active');
+        });
+        downloadBtn.addEventListener('click', function(){
+            const content=resultContent.textContent; if(!content)return;
+            const name=studentName.value||'新人';
+            const blob=new Blob([content],{type:'text/markdown;charset=utf-8'});
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement('a');a.href=url;a.download='评估报告_'+name+'_'+new Date().toISOString().slice(0,10)+'.md';
+            document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+        });
+
+        function renderReport(text) {
+            // 按分组区块着色渲染，每道题单独一个带左边框的块
+            let html = '';
+            const lines = text.split('\n');
+            let currentSection = ''; // excellent/satisfactory/fail/''
+            let questionBuffer = [];
+            let inQuestion = false;
+
+            function flushQuestion() {
+                if (questionBuffer.length === 0) return;
+                const content = questionBuffer.join('\n');
+                if (currentSection && currentSection !== 'header') {
+                    html += '<div class="question-block-' + currentSection + '">' + escapeHtml(content) + '</div>';
+                } else {
+                    html += escapeHtml(content) + '\n';
+                }
+                questionBuffer = [];
+            }
+
+            for (const line of lines) {
+                // 检测分区标题
+                if (line.includes('Excellent 优秀区')) {
+                    flushQuestion(); currentSection = 'excellent'; inQuestion = false;
+                    html += '<div class="section-excellent"><strong>' + escapeHtml(line) + '</strong></div>\n';
+                } else if (line.includes('Satisfactory 提示区')) {
+                    flushQuestion(); currentSection = 'satisfactory'; inQuestion = false;
+                    html += '<div class="section-satisfactory"><strong>' + escapeHtml(line) + '</strong></div>\n';
+                } else if (line.includes('Fail 警示区')) {
+                    flushQuestion(); currentSection = 'fail'; inQuestion = false;
+                    html += '<div class="section-fail"><strong>' + escapeHtml(line) + '</strong></div>\n';
+                } else if (line.startsWith('**Q') && line.includes('—')) {
+                    // 新题目开始，先 flush 上一题
+                    flushQuestion(); inQuestion = true;
+                    questionBuffer.push(line);
+                } else if (line === '···') {
+                    // 题目分隔符，flush 当前题
+                    flushQuestion(); inQuestion = false;
+                } else if (line.startsWith('---') || line.startsWith('### ')) {
+                    flushQuestion(); currentSection = ''; inQuestion = false;
+                    html += escapeHtml(line) + '\n';
+                } else {
+                    if (inQuestion || (currentSection && questionBuffer.length > 0)) {
+                        questionBuffer.push(line);
+                    } else if (currentSection === 'excellent' && !inQuestion) {
+                        // Excellent 区的非题目行（如通过题目列表）
+                        questionBuffer.push(line);
+                    } else {
+                        html += escapeHtml(line) + '\n';
+                    }
+                }
+            }
+            flushQuestion();
+            resultContent.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        loadServices();
+        window.onerror = function(msg, url, line) {
+            document.getElementById('errorMsg').textContent = 'JS错误: ' + msg + ' (行' + line + ')';
+            document.getElementById('errorMsg').classList.add('active');
+        };
+    </script>
+</body>
+</html>

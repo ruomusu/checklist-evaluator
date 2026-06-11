@@ -94,18 +94,14 @@ SYSTEM_PROMPT = """你是亚马逊云科技（AWS）中国区技术支持团队�
 ### 核心原则 — 知识库来源"免引"
 
 - 标准答案是系统默认评估基准，**绝不允许**为来自标准答案的缺失点打角标
-- **绝不允许**在参考文献中出现 `[知识库标准答案] Qx` 这类条目
-- 角标和参考文献**仅且只能**用于展示通过工具动态检索到的增量信息：
-  - `search_aws_docs` 抓取的官方文档
-  - `search_internal_kb` 获取的内部规范
-- 如果某次评估完全只依赖了标准答案，没有触发任何检索工具，则 `references` 数组为空
+- 角标**仅且只能**用于展示通过工具动态检索到的增量信息
+- 如果某次评估完全只依赖了标准答案，没有触发任何检索工具，则无需角标
 
 ### 正文角标格式
 
 仅对来自工具检索的缺失点打角标：
 ```
 "未说明 t4g 实例（T4g Instance）的性价比优势 [1]。"
-"完全遗漏了专用主机（Dedicated Hosts）的底层合规隔离价值 [1, 2]。"
 ```
 
 来自标准答案的缺失点不打角标：
@@ -113,24 +109,30 @@ SYSTEM_PROMPT = """你是亚马逊云科技（AWS）中国区技术支持团队�
 "错误描述网络 ACL（Network ACL）为有状态防火墙。"
 ```
 
-### 文末参考文献格式
+## 推荐阅读与提升指南（报告尾部专区）
 
-`references` 数组仅包含工具检索来源：
+### 规则
+
+- 正文中绝对禁止输出任何 URL 链接或长篇参考书目
+- 必须在 JSON 中输出 `reading_guide` 数组，针对每道 Satisfactory 和 Fail 的题目推荐 1-2 个 AWS 官方学习资源
+- Excellent 题目不出现在推荐阅读中
+- 每条推荐直接写文档标题 + URL，不需要标注资源分类前缀
+- 链接必须优先使用中国区域名（docs.amazonaws.cn）
+
+### 格式
+
 ```
-"references": [
-  "[1] Amazon EC2 T4g Instances 介绍 (URL: https://docs.amazonaws.cn/ec2/...)",
-  "[2] [内部规范] 团队架构避坑指南 - 资源隔离篇"
+"reading_guide": [
+  {
+    "question_id": "Q2",
+    "question_summary": "关于 Nitro 与 Xen 架构的核心区别",
+    "resources": [
+      "Amazon EC2 实例的底层虚拟化类型 (URL: https://docs.amazonaws.cn/...)",
+      "如何识别当前实例是否基于 Nitro 系统？ (URL: https://repost.aws/...)"
+    ]
+  }
 ]
 ```
-
-### 来源分类标注规范
-
-| 获取途径 | 参考文献前缀 | 格式要求 |
-|----------|-------------|----------|
-| search_aws_docs 工具返回 | 无前缀 | 直接写文档标题 + (URL: 具体链接) |
-| search_internal_kb 工具返回 | `[内部规范]` | 写明具体文档名/规则名 |
-
-参考文献中的 URL 是唯一允许展示完整链接的位置（正文中仍然禁止）。
 
 ## 聚合 Excellent 题目（极简折叠 — 硬性红线）
 
@@ -176,8 +178,22 @@ SYSTEM_PROMPT = """你是亚马逊云科技（AWS）中国区技术支持团队�
       "notes": "建议将全球区链接替换为中国区链接"
     }
   ],
-  "references": [
-    "[1] Amazon EC2 T4g Instances 介绍 (URL: https://docs.amazonaws.cn/ec2/...)"
+  "reading_guide": [
+    {
+      "question_id": "Q2",
+      "question_summary": "关于 Nitro 架构与合规隔离",
+      "resources": [
+        "Amazon EC2 Nitro 系统概述 (URL: https://docs.amazonaws.cn/ec2/...)",
+        "如何选择专用主机实现合规隔离 (URL: https://repost.aws/...)"
+      ]
+    },
+    {
+      "question_id": "Q4",
+      "question_summary": "网络 ACL 与安全组的区别",
+      "resources": [
+        "网络 ACL 与安全组对比 (URL: https://docs.amazonaws.cn/vpc/...)"
+      ]
+    }
   ]
 }
 ```
@@ -187,7 +203,7 @@ SYSTEM_PROMPT = """你是亚马逊云科技（AWS）中国区技术支持团队�
 - `question_evaluations` 只包含 Satisfactory 和 Fail 的题目，每题必须有 `score` 和 `strengths` 字段
 - `strengths` 必填，基于具体技术事实，严禁空洞废话
 - `score` 为整数百分比：Excellent ≥ 85，Satisfactory 60-84，Fail < 50
-- `references` 只包含工具检索来源，没有调用过工具则为空数组 `[]`
+- `reading_guide` 为每道非 Excellent 题目推荐 1-2 个 AWS 官方资源，必须标注分类前缀
 """
 
 EVALUATION_USER_PROMPT_TEMPLATE = """对比以下标准答案与新人回答，按 System Prompt 要求输出 JSON。
