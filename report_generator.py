@@ -45,18 +45,34 @@ class ReportGenerator:
         lines.append("")
 
         # ═══ Excellent 优秀区 ═══
-        if report.mastered_ids:
-            lines.append("## ✅ Excellent 优秀区")
+        excellent_evals = [e for e in report.question_evaluations if e.mastery_level == MasteryLevel.EXCELLENT]
+        if excellent_evals:
+            lines.append(f"## ✅ Excellent 优秀区（{len(excellent_evals)} 题）")
             lines.append("")
-            lines.append(f"**通过题目**：{', '.join(report.mastered_ids)}")
             if report.mastered_has_global_links:
                 lines.append("💡 提示：部分题目使用了全球区链接，建议替换为中国区链接")
-            lines.append("")
+                lines.append("")
+            for ev in excellent_evals:
+                if ev.question:
+                    lines.append(f"**{ev.question_id}: {ev.question}** — Excellent ({ev.score}%) ✅")
+                else:
+                    lines.append(f"**{ev.question_id}** — Excellent ({ev.score}%) ✅")
+                lines.append("")
+                if ev.strengths:
+                    lines.append("**🌟 答题亮点**")
+                    for s in ev.strengths:
+                        lines.append(f"- {s}")
+                    lines.append("")
+                if ev.missing_points:
+                    lines.append("**⚠️ 轻微遗漏**")
+                    for m in ev.missing_points:
+                        lines.append(f"- {m}")
+                    lines.append("")
 
         # ═══ Satisfactory 提示区 ═══
         satisfactory_evals = [e for e in report.question_evaluations if e.mastery_level == MasteryLevel.SATISFACTORY]
         if satisfactory_evals:
-            lines.append("## ⚠️ Satisfactory 提示区")
+            lines.append(f"## ⚠️ Satisfactory 提示区（{len(satisfactory_evals)} 题）")
             lines.append("")
             for ev in satisfactory_evals:
                 self._render_question(lines, ev)
@@ -64,7 +80,7 @@ class ReportGenerator:
         # ═══ Fail 警示区 ═══
         fail_evals = [e for e in report.question_evaluations if e.mastery_level == MasteryLevel.FAIL]
         if fail_evals:
-            lines.append("## ❌ Fail 警示区")
+            lines.append(f"## ❌ Fail 警示区（{len(fail_evals)} 题）")
             lines.append("")
             for ev in fail_evals:
                 self._render_question(lines, ev)
@@ -104,9 +120,6 @@ class ReportGenerator:
         if ev.notes:
             lines.append(f"💡 {ev.notes}")
             lines.append("")
-        # 题目之间加分隔
-        lines.append("···")
-        lines.append("")
 
     def save_report(self, report: EvaluationReport, filename: str = None) -> str:
         if not filename:

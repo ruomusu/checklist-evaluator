@@ -191,12 +191,66 @@
             min-height: 80px; letter-spacing: 0.2px;
         }
         /* 分组区块颜色标记 */
-        .result-content .section-excellent { margin: 20px 0; }
-        .result-content .section-satisfactory { margin: 20px 0; }
-        .result-content .section-fail { margin: 20px 0; }
-        .result-content .question-block-excellent { border-left: 4px solid var(--excellent); padding-left: 16px; margin: 16px 0; border-radius: 4px; }
-        .result-content .question-block-satisfactory { border-left: 4px solid var(--satisfactory); padding-left: 16px; margin: 16px 0; border-radius: 4px; }
-        .result-content .question-block-fail { border-left: 4px solid var(--fail); padding-left: 16px; margin: 16px 0; border-radius: 4px; }
+        .result-content .section-excellent { margin: 24px 0; }
+        .result-content .section-satisfactory { margin: 24px 0; }
+        .result-content .section-fail { margin: 24px 0; }
+        .result-content .question-block-excellent { border-left: 4px solid var(--excellent); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--excellent-bg); }
+        .result-content .question-block-satisfactory { border-left: 4px solid var(--satisfactory); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--satisfactory-bg); }
+        .result-content .question-block-fail { border-left: 4px solid var(--fail); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--fail-bg); }
+        /* Excellent 折叠面板 */
+        .result-content details.excellent-panel {
+            border: 1.5px solid var(--excellent); border-radius: 12px;
+            background: var(--excellent-bg); margin: 20px 0; overflow: hidden;
+        }
+        .result-content details.excellent-panel summary {
+            padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            color: #1a7a3a; list-style: none; display: flex; align-items: center; gap: 8px;
+        }
+        .result-content details.excellent-panel summary::before { content: '▶'; font-size: 0.7rem; transition: transform 0.3s ease; }
+        .result-content details.excellent-panel[open] summary::before { transform: rotate(90deg); }
+        .result-content details.excellent-panel .panel-content { padding: 0 20px 16px; }
+        /* Satisfactory 折叠面板 */
+        .result-content details.satisfactory-panel {
+            border: 1.5px solid var(--satisfactory); border-radius: 12px;
+            background: var(--satisfactory-bg); margin: 20px 0; overflow: hidden;
+        }
+        .result-content details.satisfactory-panel summary {
+            padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            color: #8a5e00; list-style: none; display: flex; align-items: center; gap: 8px;
+        }
+        .result-content details.satisfactory-panel summary::before { content: '▶'; font-size: 0.7rem; transition: transform 0.3s ease; }
+        .result-content details.satisfactory-panel[open] summary::before { transform: rotate(90deg); }
+        .result-content details.satisfactory-panel .panel-content { padding: 0 20px 16px; }
+        /* Fail 折叠面板 */
+        .result-content details.fail-panel {
+            border: 1.5px solid var(--fail); border-radius: 12px;
+            background: var(--fail-bg); margin: 20px 0; overflow: hidden;
+        }
+        .result-content details.fail-panel summary {
+            padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            color: #a83232; list-style: none; display: flex; align-items: center; gap: 8px;
+        }
+        .result-content details.fail-panel summary::before { content: '▶'; font-size: 0.7rem; transition: transform 0.3s ease; }
+        .result-content details.fail-panel[open] summary::before { transform: rotate(90deg); }
+        .result-content details.fail-panel .panel-content { padding: 0 20px 16px; }
+        /* 推荐阅读折叠面板 */
+        .result-content details.reading-panel {
+            border: 1.5px solid var(--primary); border-radius: 12px;
+            background: #f0f7ff; margin: 24px 0; overflow: hidden;
+        }
+        .result-content details.reading-panel summary {
+            padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            color: var(--primary); list-style: none; display: flex; align-items: center; gap: 8px;
+        }
+        .result-content details.reading-panel summary::before { content: '▶'; font-size: 0.7rem; transition: transform 0.3s ease; }
+        .result-content details.reading-panel[open] summary::before { transform: rotate(90deg); }
+        .result-content details.reading-panel .panel-content { padding: 0 20px 16px; }
+        .result-content .reading-card {
+            background: #fff; border-radius: 10px; padding: 14px 18px; margin: 10px 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid var(--border);
+        }
+        .result-content .reading-card strong { font-size: 0.88rem; color: var(--text); }
+        .result-content .reading-card .res-link { color: var(--text-secondary); font-size: 0.82rem; margin-top: 6px; display: block; }
         .cursor { display: inline-block; width: 2px; height: 1.1em; background: var(--primary); animation: blink 0.7s step-end infinite; vertical-align: text-bottom; }
         @keyframes blink { 50% { opacity: 0; } }
 
@@ -226,6 +280,65 @@
         /* Animations */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 报告头部样式 */
+        .report-header {
+            text-align: center;
+            padding: 28px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+        .report-header h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .report-header .time { font-size: 0.82rem; opacity: 0.8; margin-bottom: 16px; }
+        .report-header .stats {
+            display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;
+        }
+        .report-header .stat-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+            border-radius: 20px; padding: 6px 14px; font-size: 0.82rem; font-weight: 600;
+        }
+        /* 侧边题号导航 */
+        .side-nav {
+            display: none;
+            position: fixed;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 160px;
+            max-height: 70vh;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            padding: 16px 12px;
+            z-index: 1000;
+            animation: fadeIn 0.4s ease;
+        }
+        .side-nav.active { display: block; }
+        .side-nav h4 { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .side-nav .nav-section { margin-bottom: 12px; }
+        .side-nav .nav-section-title { font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+        .side-nav .nav-item {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .side-nav .nav-item:hover { transform: scale(1.1); }
+        .side-nav .nav-item.excellent { background: var(--excellent-bg); color: #1a7a3a; border: 1px solid var(--excellent); }
+        .side-nav .nav-item.satisfactory { background: var(--satisfactory-bg); color: #8a5e00; border: 1px solid var(--satisfactory); }
+        .side-nav .nav-item.fail { background: var(--fail-bg); color: #a83232; border: 1px solid var(--fail); }
+        @media (max-width: 1100px) { .side-nav { display: none !important; } }
     </style>
 </head>
 <body>
@@ -283,6 +396,9 @@
 
         <!-- 错误 -->
         <div class="error-msg" id="errorMsg"></div>
+
+        <!-- 侧边导航 -->
+        <div class="side-nav" id="sideNav"></div>
 
         <!-- 结果 -->
         <div class="result-card" id="resultCard">
@@ -451,6 +567,7 @@
 
         resetBtn.addEventListener('click', function(){
             resultCard.classList.remove('active'); mainPanel.style.display='block'; resultContent.textContent=''; errorMsg.classList.remove('active');
+            document.getElementById('sideNav').classList.remove('active');
         });
         downloadBtn.addEventListener('click', function(){
             const content=resultContent.textContent; if(!content)return;
@@ -462,62 +579,181 @@
         });
 
         function renderReport(text) {
-            // 按分组区块着色渲染，每道题单独一个带左边框的块
             let html = '';
             const lines = text.split('\n');
-            let currentSection = ''; // excellent/satisfactory/fail/''
+            let currentSection = '';
             let questionBuffer = [];
-            let inQuestion = false;
+            let excellentContent = [];
+            let excellentTitle = '✅ Excellent 优秀区';
+            let satisfactoryContent = [];
+            let satisfactoryTitle = '⚠️ Satisfactory 提示区';
+            let failContent = [];
+            let failTitle = '❌ Fail 警示区';
+            let readingContent = [];
+            let navData = { excellent: [], satisfactory: [], fail: [] };
+
+            function flushReading() {
+                if (readingContent.length === 0) return;
+                html += '<details class="reading-panel"><summary>📚 推荐阅读与提升指南（点击展开获取针对性复习资料）</summary><div class="panel-content">' + readingContent.join('') + '</div></details>';
+                readingContent = [];
+            }
+
+            function flushExcellent() {
+                if (excellentContent.length === 0) return;
+                html += '<details class="excellent-panel"><summary>' + escapeHtml(excellentTitle) + '（点击展开查看）</summary><div class="panel-content">' + excellentContent.join('') + '</div></details>';
+                excellentContent = [];
+            }
+
+            function flushSatisfactory() {
+                if (satisfactoryContent.length === 0) return;
+                html += '<details class="satisfactory-panel" open><summary>' + escapeHtml(satisfactoryTitle) + '</summary><div class="panel-content">' + satisfactoryContent.join('') + '</div></details>';
+                satisfactoryContent = [];
+            }
+
+            function flushFail() {
+                if (failContent.length === 0) return;
+                html += '<details class="fail-panel" open><summary>' + escapeHtml(failTitle) + '</summary><div class="panel-content">' + failContent.join('') + '</div></details>';
+                failContent = [];
+            }
 
             function flushQuestion() {
                 if (questionBuffer.length === 0) return;
-                const content = questionBuffer.join('\n');
-                if (currentSection && currentSection !== 'header') {
-                    html += '<div class="question-block-' + currentSection + '">' + escapeHtml(content) + '</div>';
+                const content = questionBuffer.join('\n').trim();
+                if (!content) { questionBuffer = []; return; }
+                const qidMatch = content.match(/\*\*(Q\d+)/);
+                const qid = qidMatch ? qidMatch[1] : '';
+                const anchor = qid ? ' id="q-' + qid + '"' : '';
+                if (currentSection === 'excellent') {
+                    excellentContent.push('<div class="question-block-excellent"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    if (qid) navData.excellent.push(qid);
+                } else if (currentSection === 'satisfactory') {
+                    satisfactoryContent.push('<div class="question-block-satisfactory"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    if (qid) navData.satisfactory.push(qid);
+                } else if (currentSection === 'fail') {
+                    failContent.push('<div class="question-block-fail"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    if (qid) navData.fail.push(qid);
+                } else if (currentSection === 'reading') {
+                    readingContent.push('<div class="reading-card">' + escapeHtml(content) + '</div>');
                 } else {
                     html += escapeHtml(content) + '\n';
                 }
                 questionBuffer = [];
             }
 
+            let headerDone = false;
+            let headerTitle = '';
+            let headerTime = '';
+            let headerStats = '';
+
             for (const line of lines) {
-                // 检测分区标题
+                // 解析报告头部
+                if (!headerDone) {
+                    if (line.startsWith('# ')) {
+                        headerTitle = line.replace('# ', '');
+                        continue;
+                    } else if (line.startsWith('评估时间')) {
+                        headerTime = line;
+                        continue;
+                    } else if (line.startsWith('总计')) {
+                        headerStats = line;
+                        continue;
+                    } else if (line === '---') {
+                        // 头部结束，渲染styled header
+                        headerDone = true;
+                        html += '<div class="report-header">';
+                        html += '<h2>' + escapeHtml(headerTitle) + '</h2>';
+                        html += '<div class="time">' + escapeHtml(headerTime) + '</div>';
+                        html += '<div class="stats">';
+                        // 解析统计数字
+                        const statParts = headerStats.split('|');
+                        statParts.forEach(p => {
+                            html += '<span class="stat-badge">' + escapeHtml(p.trim()) + '</span>';
+                        });
+                        html += '</div></div>';
+                        continue;
+                    } else if (!line.trim()) {
+                        continue;
+                    }
+                }
+
                 if (line.includes('Excellent 优秀区')) {
-                    flushQuestion(); currentSection = 'excellent'; inQuestion = false;
-                    html += '<div class="section-excellent"><strong>' + escapeHtml(line) + '</strong></div>\n';
+                    flushQuestion(); currentSection = 'excellent';
+                    excellentTitle = line.replace('## ','');
                 } else if (line.includes('Satisfactory 提示区')) {
-                    flushQuestion(); currentSection = 'satisfactory'; inQuestion = false;
-                    html += '<div class="section-satisfactory"><strong>' + escapeHtml(line) + '</strong></div>\n';
+                    flushQuestion(); flushExcellent(); currentSection = 'satisfactory';
+                    satisfactoryTitle = line.replace('## ','');
                 } else if (line.includes('Fail 警示区')) {
-                    flushQuestion(); currentSection = 'fail'; inQuestion = false;
-                    html += '<div class="section-fail"><strong>' + escapeHtml(line) + '</strong></div>\n';
-                } else if (line.startsWith('**Q') && line.includes('—')) {
-                    // 新题目开始，先 flush 上一题
-                    flushQuestion(); inQuestion = true;
+                    flushQuestion(); flushSatisfactory(); currentSection = 'fail';
+                    failTitle = line.replace('## ','');
+                } else if (line.startsWith('**Q') && (line.includes('—') || currentSection === 'reading')) {
+                    flushQuestion();
                     questionBuffer.push(line);
                 } else if (line === '···') {
-                    // 题目分隔符，flush 当前题
-                    flushQuestion(); inQuestion = false;
+                    flushQuestion();
                 } else if (line.startsWith('---') || line.startsWith('### ')) {
-                    flushQuestion(); currentSection = ''; inQuestion = false;
-                    html += escapeHtml(line) + '\n';
-                } else {
-                    if (inQuestion || (currentSection && questionBuffer.length > 0)) {
-                        questionBuffer.push(line);
-                    } else if (currentSection === 'excellent' && !inQuestion) {
-                        // Excellent 区的非题目行（如通过题目列表）
-                        questionBuffer.push(line);
+                    flushQuestion(); flushExcellent(); flushSatisfactory(); flushFail();
+                    if (line.includes('推荐阅读')) {
+                        currentSection = 'reading';
                     } else {
+                        currentSection = '';
                         html += escapeHtml(line) + '\n';
                     }
+                } else {
+                    questionBuffer.push(line);
                 }
             }
             flushQuestion();
+            flushExcellent();
+            flushSatisfactory();
+            flushFail();
+            flushReading();
             resultContent.innerHTML = html;
+            buildNavigation(navData);
+        }
+
+        function buildNavigation(data) {
+            const nav = document.getElementById('sideNav');
+            if (!data.excellent.length && !data.satisfactory.length && !data.fail.length) {
+                nav.classList.remove('active'); return;
+            }
+            let navHtml = '<h4>题号导航</h4>';
+            if (data.excellent.length) {
+                navHtml += '<div class="nav-section"><div class="nav-section-title">✅ Excellent</div>';
+                data.excellent.forEach(q => { navHtml += '<span class="nav-item excellent" data-qid="' + q + '">' + q + '</span>'; });
+                navHtml += '</div>';
+            }
+            if (data.satisfactory.length) {
+                navHtml += '<div class="nav-section"><div class="nav-section-title">⚠️ Satisfactory</div>';
+                data.satisfactory.forEach(q => { navHtml += '<span class="nav-item satisfactory" data-qid="' + q + '">' + q + '</span>'; });
+                navHtml += '</div>';
+            }
+            if (data.fail.length) {
+                navHtml += '<div class="nav-section"><div class="nav-section-title">❌ Fail</div>';
+                data.fail.forEach(q => { navHtml += '<span class="nav-item fail" data-qid="' + q + '">' + q + '</span>'; });
+                navHtml += '</div>';
+            }
+            nav.innerHTML = navHtml;
+            nav.classList.add('active');
+            // 点击导航项
+            nav.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const qid = this.dataset.qid;
+                    const target = document.getElementById('q-' + qid);
+                    if (!target) return;
+                    // 如果在折叠面板中，先展开
+                    const details = target.closest('details');
+                    if (details && !details.open) { details.open = true; }
+                    // 平滑滚动
+                    setTimeout(() => { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
+                });
+            });
         }
 
         function escapeHtml(text) {
-            return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            let escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            // Convert Markdown links [title](url) to clickable <a> tags
+            escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:none;border-bottom:1px solid var(--primary);">$1</a>');
+            return escaped;
         }
 
         loadServices();

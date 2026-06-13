@@ -255,8 +255,8 @@ class Evaluator:
         mastered_ids = data.get("mastered_ids", [])
         mastered_has_global_links = data.get("mastered_has_global_links", False)
 
-        # 统计各等级数量
-        excellent = len(mastered_ids)
+        # 统计各等级数量（从实际 evaluations 计数，确保准确）
+        excellent = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.EXCELLENT)
         satisfactory = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.SATISFACTORY)
         fail = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.FAIL)
 
