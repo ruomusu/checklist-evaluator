@@ -44,7 +44,7 @@
             padding: 60px 24px;
             -webkit-font-smoothing: antialiased;
         }
-        .container { width: 100%; max-width: 680px; margin: 0 auto; }
+        .container { width: 100%; max-width: 750px; margin: 0 auto; }
 
         /* Header */
         .header { text-align: center; margin-bottom: 48px; }
@@ -725,8 +725,6 @@
         let lastSortKey = ''; // 当前报告在 DynamoDB 中的 sort key
         let lastReportUser = ''; // 当前报告的用户名
         document.getElementById('highlightBtn').addEventListener('click', async function(){
-            if (!lastSortKey) return;
-            
             // 对于管理员，使用报告对应的用户名；对于普通用户，使用当前登录用户名
             const currentRole = localStorage.getItem('role');
             let targetUser;
@@ -735,23 +733,27 @@
             } else {
                 targetUser = studentName.value || localStorage.getItem('username');
             }
-            
-            try {
-                const resp = await fetch('/api/toggle-highlight', {
-                    method: 'PATCH',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ trainee_name: targetUser, service_timestamp: lastSortKey })
-                });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data.is_highlighted) {
-                        this.textContent = '⭐ 已高光（再次点击取消）';
-                    } else {
-                        this.textContent = '⭐ 高光保存';
+            if (!targetUser || !lastReportMarkdown) return;
+
+            // 如果有 sortKey，toggle 已有记录
+            if (lastSortKey) {
+                try {
+                    const resp = await fetch('/api/toggle-highlight', {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ trainee_name: targetUser, service_timestamp: lastSortKey })
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data.is_highlighted) {
+                            this.textContent = '⭐ 已高光（再次点击取消）';
+                        } else {
+                            this.textContent = '⭐ 高光保存';
+                        }
+                        loadHistory(studentName.value || localStorage.getItem('username'));
                     }
-                    loadHistory(studentName.value || localStorage.getItem('username'));
-                }
-            } catch(e) {}
+                } catch(e) {}
+            }
         });
 
         // 历史记录加载与渲染

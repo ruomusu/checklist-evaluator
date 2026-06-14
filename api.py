@@ -330,8 +330,9 @@ async def toggle_highlight_endpoint(request: ToggleHighlightRequest):
 async def get_history_endpoint(trainee_name: str, current_user: dict = Depends(get_current_user)):
     """查询某新人的所有历史评估记录"""
     # 权限检查：普通用户只能查看自己的记录，管理员可以查看任何用户的记录
-    if current_user.get("role") != "admin" and current_user.get("username") != trainee_name:
-        raise HTTPException(status_code=403, detail="无权访问其他用户的记录")
+    log(f"History 权限检查 | token_user='{current_user.get('trainee_name')}' | 请求trainee='{trainee_name}' | role={current_user.get('role')}", stage="KB")
+    if current_user.get("role") != "admin" and current_user.get("trainee_name") != trainee_name:
+        raise HTTPException(status_code=403, detail=f"无权访问: token用户='{current_user.get('trainee_name')}', 请求='{trainee_name}'")
     
     try:
         items = db_get_history(trainee_name)
