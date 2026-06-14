@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import Optional, AsyncGenerator
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Body
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Body, Depends
 from fastapi.responses import PlainTextResponse, HTMLResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -26,6 +26,9 @@ from evaluator import Evaluator
 from report_generator import ReportGenerator
 from knowledge_provider import create_provider
 from storage import save_report as db_save_report, get_history as db_get_history, toggle_highlight as db_toggle_highlight
+from storage import register_user as db_register_user, verify_user as db_verify_user, get_user as db_get_user, get_all_users as db_get_all_users
+from storage import get_all_history as db_get_all_history
+from auth import create_access_token, get_current_user
 
 import re
 
@@ -223,6 +226,95 @@ class ToggleHighlightRequest(BaseModel):
     service_timestamp: str
 
 
+# ========================
+# 认证相关 API
+# ========================
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/auth/register", include_in_schema=False)
+async def register(request: RegisterRequest):
+    """用户注册"""
+    try:
+        user = db_register_user(request.username, request.password)
+        return JSONResponse(content={"status": "ok", "user": user})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        log(f"注册失败: {e}", stage="ERROR", level=logging.ERROR)
+        raise HTTPException(status_code=500, detail=f"注册失败: {e}")
+
+
+@app.post("/api/auth/login", include_in_schema=False)
+async def login(request: LoginRequest):
+    """用户登录"""
+    try:
+        if not db_verify_user(request.username, request.password):
+            raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+        user = db_get_user(request.username)
+        token = create_access_token({"sub": request.username, "role": user.get("role", "user")})
+
+        return JSONResponse(content={
+            "status": "ok",
+            "token": token,
+            "user": user,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        log(f"登录失败: {e}", stage="ERROR", level=logging.ERROR)
+        raise HTTPException(status_code=500, detail=f"登录失败: {e}")
+
+
+@app.get("/api/auth/me", include_in_schema=False)
+async def get_me(current_user: dict = Depends(get_current_user)):
+    """获取当前登录用户信息"""
+    return JSONResponse(content={"status": "ok", "user": current_user})
+
+
+@app.get("/api/auth/users", include_in_schema=False)
+async def get_users(current_user: dict = Depends(get_current_user)):
+    """获取所有用户列表（仅管理员）"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可访问")
+
+    users = db_get_all_users()
+    return JSONResponse(content={"status": "ok", "users": users})
+
+
+@app.get("/api/admin/all-history", include_in_schema=False)
+async def get_all_history_endpoint(current_user: dict = Depends(get_current_user)):
+    """获取所有用户的所有历史记录（仅管理员）"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可访问")
+
+    try:
+        items = db_get_all_history()
+        import json
+        from decimal import Decimal
+
+        class DecimalEncoder(json.JSONEncoder):
+            def default(self, o):
+                if isinstance(o, Decimal):
+                    return int(o) if o == int(o) else float(o)
+                return super().default(o)
+
+        clean_items = json.loads(json.dumps(items, cls=DecimalEncoder))
+        return JSONResponse(content={"status": "ok", "items": clean_items})
+    except Exception as e:
+        log(f"DynamoDB 查询失败: {e}", stage="ERROR", level=logging.ERROR)
+        raise HTTPException(status_code=500, detail=f"查询失败: {e}")
+
+
 @app.patch("/api/toggle-highlight", include_in_schema=False)
 async def toggle_highlight_endpoint(request: ToggleHighlightRequest):
     """翻转某条记录的高光状态"""
@@ -235,8 +327,12 @@ async def toggle_highlight_endpoint(request: ToggleHighlightRequest):
 
 
 @app.get("/api/history/{trainee_name}", include_in_schema=False)
-async def get_history_endpoint(trainee_name: str):
+async def get_history_endpoint(trainee_name: str, current_user: dict = Depends(get_current_user)):
     """查询某新人的所有历史评估记录"""
+    # 权限检查：普通用户只能查看自己的记录，管理员可以查看任何用户的记录
+    if current_user.get("role") != "admin" and current_user.get("username") != trainee_name:
+        raise HTTPException(status_code=403, detail="无权访问其他用户的记录")
+    
     try:
         items = db_get_history(trainee_name)
         import json
@@ -258,4 +354,28 @@ async def get_history_endpoint(trainee_name: str):
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def frontend_page():
     html = Path(__file__).parent.joinpath("frontend.html").read_text(encoding="utf-8")
+    return HTMLResponse(content=html, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+def login_page():
+    html = Path(__file__).parent.joinpath("login.html").read_text(encoding="utf-8")
+    return HTMLResponse(content=html, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/login.html", response_class=HTMLResponse, include_in_schema=False)
+def login_page_html():
+    html = Path(__file__).parent.joinpath("login.html").read_text(encoding="utf-8")
+    return HTMLResponse(content=html, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
+def admin_page():
+    html = Path(__file__).parent.joinpath("admin.html").read_text(encoding="utf-8")
+    return HTMLResponse(content=html, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/admin.html", response_class=HTMLResponse, include_in_schema=False)
+def admin_page_html():
+    html = Path(__file__).parent.joinpath("admin.html").read_text(encoding="utf-8")
     return HTMLResponse(content=html, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})

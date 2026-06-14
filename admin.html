@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>管理后台 - Checklist 评估系统</title>
+    <script>
+        // 检查登录状态
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+        
+        // 检查是否是管理员
+        const role = localStorage.getItem('role');
+        if (role !== 'admin') {
+            alert('仅管理员可访问');
+            window.location.href = '/';
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #f5f5f5;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        
+        .stat-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 600;
+            color: #0071e3;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            transition: all 0.2s;
+        }
+        
+        .tab.active {
+            background: #0071e3;
+            color: white;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 20px;
+            display: none;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            font-weight: 600;
+            color: #666;
+            font-size: 13px;
+            background: #f9f9f9;
+        }
+        
+        td {
+            font-size: 14px;
+        }
+        
+        tr:hover td {
+            background: #f9f9f9;
+        }
+        
+        .report-preview {
+            max-height: 200px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .report-preview::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, white);
+        }
+        
+        .report-content {
+            white-space: pre-wrap;
+            font-size: 13px;
+            line-height: 1.6;
+            background: #f9f9f9;
+            padding: 16px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-admin {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .badge-user {
+            background: #f5f5f5;
+            color: #666;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 管理后台</h1>
+            <div class="header-right">
+                <span class="user-info" id="userDisplay"></span>
+                <button class="btn" onclick="window.location.href='/'">返回主页</button>
+                <button class="btn" id="logoutBtn">退出登录</button>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <h3>用户总数</h3>
+                <div class="value" id="userCount">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>评估记录总数</h3>
+                <div class="value" id="historyCount">-</div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('users')">用户列表</button>
+            <button class="tab" onclick="showTab('history')">评估记录</button>
+        </div>
+        
+        <div class="panel active" id="usersPanel">
+            <div id="usersLoading" class="loading">加载中...</div>
+            <table id="usersTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>用户名</th>
+                        <th>角色</th>
+                        <th>注册时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody"></tbody>
+            </table>
+        </div>
+        
+        <div class="panel" id="historyPanel">
+            <div id="historyLoading" class="loading">加载中...</div>
+            <table id="historyTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>用户</th>
+                        <th>服务类型</th>
+                        <th>评估时间</th>
+                        <th>高亮</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 查看报告弹窗 -->
+    <div id="reportModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+        <div style="background: white; max-width: 900px; margin: 40px auto; border-radius: 12px; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 20px;">评估报告</h2>
+                <button onclick="document.getElementById('reportModal').style.display='none'" style="padding: 8px 16px; border: none; background: #f5f5f5; border-radius: 6px; cursor: pointer;">关闭</button>
+            </div>
+            <div id="reportContent" class="report-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        const token = localStorage.getItem('token');
+        
+        // 显示用户信息
+        const username = localStorage.getItem('username');
+        document.getElementById('userDisplay').textContent = `👤 ${username}`;
+        
+        // 退出登录
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            localStorage.removeItem('role');
+            window.location.href = '/login.html';
+        });
+        
+        // Tab 切换
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            
+            if (tab === 'users') {
+                document.querySelector('.tab:nth-child(1)').classList.add('active');
+                document.getElementById('usersPanel').classList.add('active');
+                if (!usersLoaded) loadUsers();
+            } else {
+                document.querySelector('.tab:nth-child(2)').classList.add('active');
+                document.getElementById('historyPanel').classList.add('active');
+                if (!historyLoaded) loadHistory();
+            }
+        }
+        
+        let usersLoaded = false;
+        let historyLoaded = false;
+        
+        // 加载用户列表
+        async function loadUsers() {
+            try {
+                const response = await fetch(API_BASE + '/api/auth/users', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    alert('登录已过期，请重新登录');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    document.getElementById('userCount').textContent = data.users.length;
+                    
+                    const tbody = document.getElementById('usersBody');
+                    tbody.innerHTML = data.users.map(user => `
+                        <tr>
+                            <td>${user.trainee_name}</td>
+                            <td><span class="badge ${user.role === 'admin' ? 'badge-admin' : 'badge-user'}">${user.role === 'admin' ? '管理员' : '用户'}</span></td>
+                            <td>${user.created_at}</td>
+                            <td><button class="btn" onclick="viewUserHistory('${user.trainee_name}')">查看记录</button></td>
+                        </tr>
+                    `).join('');
+                    
+                    document.getElementById('usersLoading').style.display = 'none';
+                    document.getElementById('usersTable').style.display = 'table';
+                    usersLoaded = true;
+                }
+            } catch (error) {
+                document.getElementById('usersLoading').textContent = '加载失败: ' + error.message;
+            }
+        }
+        
+        // 加载所有历史记录
+        async function loadHistory() {
+            try {
+                const response = await fetch(API_BASE + '/api/admin/all-history', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    alert('登录已过期，请重新登录');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    document.getElementById('historyCount').textContent = data.items.length;
+                    
+                    const tbody = document.getElementById('historyBody');
+                    tbody.innerHTML = data.items.map(item => `
+                        <tr>
+                            <td>${item.trainee_name}</td>
+                            <td>${item.service_type}</td>
+                            <td>${item.created_at}</td>
+                            <td>${item.is_highlighted ? '⭐ 是' : '否'}</td>
+                            <td><button class="btn" onclick="viewReport('${item.service_timestamp}', '${item.trainee_name}')">查看报告</button></td>
+                        </tr>
+                    `).join('');
+                    
+                    document.getElementById('historyLoading').style.display = 'none';
+                    document.getElementById('historyTable').style.display = 'table';
+                    historyLoaded = true;
+                }
+            } catch (error) {
+                document.getElementById('historyLoading').textContent = '加载失败: ' + error.message;
+            }
+        }
+        
+        // 查看单个用户的历史记录
+        async function viewUserHistory(username) {
+            showTab('history');
+            // 这里可以添加筛选逻辑，暂时显示全部
+        }
+        
+        // 查看报告
+        async function viewReport(timestamp, traineeName) {
+            try {
+                const response = await fetch(API_BASE + `/api/history/${traineeName}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                const data = await response.json();
+                const item = data.find(i => i.service_timestamp === timestamp);
+                
+                if (item) {
+                    document.getElementById('reportContent').textContent = item.report_data;
+                    document.getElementById('reportModal').style.display = 'block';
+                }
+            } catch (error) {
+                alert('加载报告失败: ' + error.message);
+            }
+        }
+        
+        // 初始加载用户统计
+        loadUsers();
+    </script>
+</body>
+</html>

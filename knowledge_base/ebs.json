@@ -1,8 +1,93 @@
 [
   {
     "question_id": "Q1",
-    "question": "EBS 卷有哪些类型？各自适用什么场景？",
-    "reference_answer": "占位 - 请替换为实际标准答案",
-    "reference_links": []
+    "question": "What are the volume types of EBS volumes? How many Types can they be divided into? What are the differences between different Types?",
+    "reference_answer": "EBS卷类型分为三大类：\n\n1. SSD（固态硬盘卷 solid state drive volumes）：\n   - General Purpose SSD volumes (gp2, gp3)\n   - Provisioned IOPS SSD volumes (io1, io2)\n\n2. HDD（硬盘驱动器卷 hard disk drive）：\n   - Throughput Optimized HDD volumes (st1)\n   - Cold HDD volumes (sc1)\n\n3. 上一代卷（Previous Generation volumes）：\n   - Magnetic volumes\n\n主要区别：\n- SSD：针对小I/O size的频繁读写操作进行了优化，主要性能属性是IOPS\n- HDD：针对大型流式处理工作负载进行了优化，主要性能属性是吞吐量\n\n具体性能：\n- gp2：吞吐量限制基于卷大小，介于128MiB-250MiB之间\n- gp3：基线性能3000IOPS，可额外付费到16000IOPS，吞吐量125MiB，可升级至1000MiB\n- io1：在配置64000IOPS和附到nitro-based instance时可以达到最大吞吐量1000MiB\n- io2：对于nitro-based instance可以实现256,000IOPS，其他类型的实例最高32000IOPS\n- st1：高吞吐量最大可达500MiB/s，低IOPS（适合顺序读写），大容量冷数据\n- sc1：250MiB/s，极低IOPS，大容量存储\n- Magnetic：卷大小1GB-1TB，每个卷的IOPS40-200，每个卷的吞吐量40-90MiB，性能最低但价格最低",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/ebs-volume-types.html",
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/ebs-gp3-volumes.html"
+    ]
+  },
+  {
+    "question_id": "Q2", 
+    "question": "What is EBS-optimized?",
+    "reference_answer": "EBS优化是EC2实例的一种配置（EBS优化型实例）：\n\n定义：\n- 通过为EBS卷分配专用网络带宽，避免EBS流量和其他流量竞争\n- 提供EBS卷和实例之间的专用吞吐量\n\n要求：\n- 附加的EBS卷需要大于等于实例性能的总性能\n- 例如：实现r6i.16xlarge的80,000IOPS，需要16000IOPS的5个gp3卷（16000*5）\n\n支持情况：\n- 较新的实例类型支持EBS优化（支持Nitro系统的）\n- 以下实例类型默认进行EBS优化，无需启用：\n  1. General Purpose\n  2. Compute Optimized\n  3. Memory Optimized\n  4. Storage Optimized\n  5. Accelerated Computing\n  6. High-Performance Computing\n\n优势：\n- 提供一致的EBS性能\n- 避免网络争用\n- 确保EBS卷达到预期的IOPS和吞吐量性能",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/ebs-optimized.html",
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/ebs-optimized-instances.html"
+    ]
+  },
+  {
+    "question_id": "Q3",
+    "question": "How to understand incremental snapshots（增量快照）?",
+    "reference_answer": "增量快照的工作机制：\n\n基本原理：\n- 新快照简单引用老快照的未更改的部分，仅复制发生更改了的部分\n- 快照没有时间保障，可以频繁创建快照，加快每次快照速度\n- 收费根据数据量而定\n\n快照类型：\n1. Full Snapshot（完整快照）：\n   - 从卷创建的第一个快照是full snapshot\n   - 包括创建快照时写入卷的所有数据块\n\n2. Incremental Snapshots（增量快照）：\n   - 同一卷的后续快照是incremental snapshots\n   - 只包含上次快照后卷修改的和新的数据块\n\n特殊情况：\n- 复制和重新加密都是全量快照\n\n优势：\n- 节省存储空间\n- 降低存储成本\n- 加快快照创建速度\n- 减少网络传输数据量\n\n注意事项：\n- 删除快照时需要考虑依赖关系\n- 增量快照之间存在链式依赖关系",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/EBSSnapshots.html"
+    ]
+  },
+  {
+    "question_id": "Q4",
+    "question": "How to extend the Linux file system on the EBS volume after modifying it?（在修改一个EBS卷后怎么修改Linux文件系统）",
+    "reference_answer": "针对XFS和Ext4文件系统扩展步骤：\n\n前提：在扩展前如果卷有分区的话一定要先扩展分区才能扩展Linux file system\n\n步骤：\n1. 连接到实例\n\n2. 如果需要resize分区：\n   a) 检测EBS卷是否已经扩容：\n      - 使用lsblk命令，比较分区大小和卷大小\n      - 检查是否需要扩展分区\n   \n   b) 如果需要扩展分区：\n      - 使用growpart命令并指定设备名称和分区编号\n      - 例如扩展nvme0n1p1分区：sudo growpart /dev/nvme0n1 1\n   \n   c) 验证是否已扩展分区：\n      - 使用lsblk命令\n      - 分区大小现在应等于卷大小\n\n3. Extend file system：\n   a) 获取文件系统信息：\n      - 使用df -hT命令获取文件系统的名称、大小、类型和挂载点\n   \n   b) 扩展文件系统（根据文件系统类型选择命令）：\n      - XFS文件系统：sudo xfs_growfs -d /\n      - Ext4文件系统：sudo resize2fs /dev/nvme0n1p1\n   \n   c) 验证是否已扩展文件系统：\n      - 使用df -hT命令确认文件系统大小等于卷大小\n\n注意：分区内部只能是连续区间，不能分配不连续的空间",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html"
+    ]
+  },
+  {
+    "question_id": "Q5",
+    "question": "How long does it take to modify the size of the EBS volume? Will it have any impact on the customer's business?",
+    "reference_answer": "EBS卷修改时间和业务影响：\n\n修改过程状态：\n- 修改后卷依次进入：modifying → optimizing → completed\n\n时间要求：\n1. 大小修改：\n   - 通常需要几秒钟\n   - 在卷转为optimizing时生效\n\n2. IOPS更改：\n   - 需要几分钟到几小时（具体视配置而定）\n   - 修改中基于原来的性能和目标性能之间的差异\n   - 新配置生效最长24小时\n\n3. 完全优化：\n   - 如卷未完全初始化时，通常完全使用的1TiB卷需要6小时去迁移到新的性能配置\n\n业务影响：\n✅ 几乎没有影响：\n- 无需停机\n- 卷在修改期间保持可用\n- 可以继续进行I/O操作\n\n⚠️ 轻微影响：\n- 可能短暂占用I/O资源\n- 在优化阶段可能出现轻微性能波动\n- 建议在业务低峰期进行大型修改\n\n监控建议：\n- 使用CloudWatch监控修改进度\n- 关注VolumeModificationProgress指标",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/monitoring-volume-modifications.html"
+    ]
+  },
+  {
+    "question_id": "Q6",
+    "question": "If you want to take a snapshot of a 100G EBS volume, how long does it take to complete it?",
+    "reference_answer": "EBS快照时间和复制性能：\n\n快照创建：\n- 创建快照并不保证时间（取决于数据变化量）\n- 创建是异步过程，可以立即开始使用\n\n快照复制性能限制：\n1. 单个快照复制操作：\n   - 吞吐量定额为500MiB/s且不可调整\n   - 最短时间为15分钟\n\n2. 账户级别限制：\n   - 同一账号在同一可用区里面吞吐量定额为2000MiB/s\n\n100G快照具体时间：\n- 100G需要15分钟（最短时间限制）\n- 450G以下都是15分钟（受最短时间限制）\n- 超过450G的快照复制时间 = 数据大小 ÷ 500MiB/s\n\n重要说明：\n- 复制的时候不会占用EBS卷带宽，因为快照数据存储在S3中\n- 快照复制在后台进行，不影响源卷性能\n- 增量快照只复制变化的数据，速度更快\n\n建议：\n- 定期创建快照以减少每次快照的数据量\n- 使用Fast Snapshot Restore (FSR)可以加速从快照恢复卷的过程",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/ebs-copy-snapshot.html"
+    ]
+  },
+  {
+    "question_id": "Q7",
+    "question": "What factors affect EBS volume performance?",
+    "reference_answer": "影响EBS卷性能的因素：\n\n1. I/O characteristics（卷的配置）：\n   - EBS卷类型（gp2/gp3/io1/io2/st1/sc1）\n   - 卷大小\n   - 预配置IOPS设置\n   - 吞吐量配置\n\n2. 卷和实例的配置：\n   - 实例是否为EBS-optimized instance\n   - 实例类型（较大的实例提供更大的EBS带宽）\n   - Instance bandwidth（带宽）\n   - 实例的网络带宽饱和时会影响EBS性能\n\n3. I/O模式：\n   - I/O大小（4KB对齐的I/O性能更好）\n   - 顺序 vs 随机访问\n   - 读写比例\n   - 队列深度\n\n4. 系统配置：\n   - 文件系统类型和配置\n   - 操作系统I/O调度器\n   - 应用程序I/O模式\n\n5. 网络因素：\n   - 实例到EBS的网络延迟\n   - 网络带宽利用率\n   - 多个EBS卷共享带宽\n\n6. 卷状态：\n   - 新卷是否已预热（初始化）\n   - 快照恢复的卷需要预热\n   - 卷的使用历史\n\n优化建议：\n- 选择合适的实例类型和EBS卷类型组合\n- 确保实例启用EBS优化\n- 合理配置I/O队列深度\n- 对新卷进行预热",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/ebs-volume-performance.html"
+    ]
+  },
+  {
+    "question_id": "Q8",
+    "question": "What is EBS volume prewarm and how to speed up the prewarm process?（EBS卷预热是什么，如何加快预热过程）",
+    "reference_answer": "EBS卷预热（Prewarm）：\n\n目的：\n- 确保所有的数据块已经从S3分配并初始化到了物理存储介质上\n- 避免出现第一次访问时物理存储介质上为空白的情况（这会导致性能下降）\n- EBS为了节省时间会使用按需拷贝的技术，初始时大部分新卷中的数据块都是指针而不是具体的内容\n\n未预热可能出现的情况：\n1. 首次读写延迟高\n2. 初始IOPS仅为标准值的30%-50%\n3. 突发性能积分积累慢（适用于通用型SSD即gp2/gp3，基于基准性能随时间累计获得基准积分，卷性能消耗低于基准性能就累计积分，否则就消耗现有积分）\n\n预热方法：\n\n1. 手动预热：\n   - 使用dd命令读取整个卷\n   - 使用fio工具进行随机读取（推荐，因为支持多线程读取）\n   - 从而读取设备上的所有数据块\n\n2. Fast Snapshot Restore (FSR)：\n   - 仅支持io1/io2卷类型\n   - 可以立即获得快照的全部性能\n   - 需要额外付费\n\nfio预热示例命令：\n```bash\n# 随机读取预热\nfio --name=prewarm --ioengine=libaio --iodepth=32 --rw=randread --bs=128k --direct=1 --numjobs=4 --runtime=600\n```\n\n注意事项：\n- 预热过程会产生实际的I/O操作\n- 建议在业务使用前完成预热\n- FSR虽然成本较高，但对于关键业务值得考虑",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/ebs-initialize.html"
+    ]
+  },
+  {
+    "question_id": "Q9",
+    "question": "How to modify the CMK of an encrypted EBS volume or snapshot?（如何修改已加密EBS卷或是快照的CMK）",
+    "reference_answer": "修改已加密EBS卷或快照的CMK方法：\n\n1. 重新加密已加密卷：\n   - 对加密快照执行createVolume操作时，可以使用不同的KMS密钥重新加密\n   - 在创建新卷时指定新的KMS密钥\n   - 过程中会创建使用新密钥加密的新卷\n\n2. 重新加密已加密快照：\n   - 由于能在复制过程中加密快照，可以将新的对称加密KMS密钥用于已经加密过的快照\n   - 在复制快照时选择使用不同的KMS密钥\n   - 复制过程中会重新加密所有数据\n\n操作步骤：\n\n方法一：通过快照重新加密卷\n1. 创建当前加密卷的快照\n2. 复制快照并指定新的KMS密钥\n3. 从新快照创建卷\n4. 将新卷附加到实例\n\n方法二：直接从快照创建新卷\n1. 使用现有快照\n2. 在CreateVolume API调用中指定新的KMS密钥\n3. AWS会自动重新加密数据\n\n注意事项：\n- 重新加密过程会产生额外的存储和计算成本\n- 需要确保有新KMS密钥的使用权限\n- 重新加密是全量操作，不是增量\n- 建议在业务低峰期进行操作\n- 确保备份重要数据",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/EBSEncryption.html#EBSEncryption_examples"
+    ]
+  },
+  {
+    "question_id": "Q10",
+    "question": "Possible reasons why the volume cannot be attached to the instance",
+    "reference_answer": "EBS卷无法附加到实例的可能原因：\n\n1. 卷数量限制：\n   - 可以连接到实例的EBS最大卷数量取决于实例类型\n   - 若超过了限制，会失败并提示AttachmentLimitExceeded\n\n2. 可用区不匹配：\n   - 卷只能连接到同一个可用区的实例上\n   - 跨AZ附加会失败\n\n3. AWS Marketplace产品代码限制：\n   a) 只能将其附加到已停止实例上\n   b) 必须订阅卷上的AWS Marketplace代码\n   c) 实例的配置（如类型和操作系统）必须支持特定的AWS Marketplace\n   d) 例如不能从Windows取用卷，将其附加到Linux实例上\n   e) AWS Marketplace代码被从卷复制到实例\n\n4. 设备名称问题：\n   - EC2会使用你指定的设备名称\n   - 块设备的驱动程序可能使用与你指定的设备名称不同的设备名称来挂载\n\n5. IAM权限问题：\n   - 挂载需要适当的IAM权限\n   - 缺少AttachVolume、DetachVolume等权限\n\n6. EBS卷状态：\n   - 卷必须处于available状态\n   - 卷不能已经附加到其他实例\n\n7. KMS权限问题：\n   - 专门用于加密的卷，需要KMS密钥的使用权限\n   - 需要授权相关的KMS策略\n\n8. 根卷冲突：\n   - 某些情况下，连接到/dev/xvda或/dev/sda以外的卷可能会成为实例的根卷\n\n排查建议：\n- 检查实例和卷是否在同一AZ\n- 确认卷状态为available\n- 验证IAM和KMS权限\n- 检查实例的卷附加限制\n- 查看CloudTrail日志了解具体错误",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/ebs-attaching-volume.html",
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/device_naming.html"
+    ]
+  },
+  {
+    "question_id": "Q11",
+    "question": "How to Benchmark EBS volumes?（EBS卷基准测试）",
+    "reference_answer": "EBS卷基准测试步骤：\n\n准备工作：\n1. 启动EBS优化实例\n2. 创建新的EBS卷\n3. 将这些卷附加到EBS优化实例\n4. 配置并挂载块存储设备\n5. 安装工具对I/O性能进行基准测试\n6. 对卷I/O性能进行基准测试\n\n安装测试工具：\n```bash\nsudo yum install -y fio\n```\n\n基准测试命令：\n\n1. 随机读测试：\n```bash\nfio --name=random-read --ioengine=libaio --iodepth=16 --rw=randread --bs=4k --direct=1 --size=1G --numjobs=4 --runtime=60 --group_reporting\n```\n\n2. 随机写测试：\n```bash\nfio --name=random-write --ioengine=libaio --iodepth=16 --rw=randwrite --bs=4k --direct=1 --size=1G --numjobs=4 --runtime=60 --group_reporting\n```\n\n3. 顺序读测试：\n```bash\nfio --name=sequential-read --ioengine=libaio --iodepth=16 --rw=read --bs=1M --direct=1 --size=1G --numjobs=1 --runtime=60 --group_reporting\n```\n\n4. 顺序写测试：\n```bash\nfio --name=sequential-write --ioengine=libaio --iodepth=16 --rw=write --bs=1M --direct=1 --size=1G --numjobs=1 --runtime=60 --group_reporting\n```\n\n测试参数说明：\n- --ioengine=libaio：使用Linux异步I/O\n- --iodepth=16：I/O队列深度\n- --bs=4k：块大小\n- --direct=1：绕过操作系统缓存\n- --numjobs=4：并发作业数\n- --runtime=60：测试运行时间（秒）\n\n最佳实践：\n- 在生产环境相似的工作负载下测试\n- 测试前先预热卷\n- 多次测试取平均值\n- 测试不同的I/O模式和块大小\n- 监控CloudWatch指标验证结果",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AWSEC2/latest/UserGuide/benchmark_procedures.html"
+    ]
   }
 ]

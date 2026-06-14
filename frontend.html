@@ -6,6 +6,13 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <title>Checklist 自动评估系统</title>
+    <script>
+        // 检查登录状态
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+    </script>
     <style>
         :root {
             --excellent: #34c759;
@@ -93,6 +100,9 @@
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .name-row input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
+        .name-row select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
+        .name-row button:hover { background: var(--primary-hover); }
+        .name-row button:disabled { background: #d1d1d6; cursor: not-allowed; }
 
         /* Mode Switcher (smaller) */
         .mode-switcher { margin-bottom: 24px; }
@@ -419,6 +429,10 @@
         <div class="header">
             <h1>📋 Checklist 自动评估系统</h1>
             <p>选择服务，上传作答文件或逐题输入，获取智能评估报告</p>
+            <div style="margin-top: 16px;">
+                <span id="userDisplay" style="font-size: 14px; color: #666;"></span>
+                <button id="logoutBtn" style="margin-left: 12px; padding: 6px 16px; border: 1px solid #e0e0e0; background: white; border-radius: 6px; cursor: pointer; font-size: 13px;">退出登录</button>
+            </div>
         </div>
 
         <div id="mainPanel">
@@ -430,7 +444,18 @@
             <!-- 姓名 -->
             <div class="name-row">
                 <label for="studentName">姓名</label>
-                <input type="text" id="studentName" placeholder="请输入姓名">
+                <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                    <input type="text" id="studentName" placeholder="请输入姓名" style="flex: 1;">
+                    <select id="userSelect" style="display: none; min-width: 180px; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 0.95rem; background: var(--card-bg);">
+                        <option value="">选择用户...</option>
+                    </select>
+                    <button id="loadHistoryBtn" style="display: none; padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 0.2s;">查看记录</button>
+                </div>
+            </div>
+            
+            <!-- 管理员当前查看用户指示器 -->
+            <div id="currentUserIndicator" style="display: none; background: linear-gradient(135deg, #e3f2fd, #f0f8ff); border: 1px solid #2196f3; border-radius: var(--radius-sm); padding: 8px 16px; margin-bottom: 16px; font-size: 0.85rem; color: #1976d2;">
+                <span style="font-weight: 600;">👁️ 当前查看：</span><span id="currentUserName"></span>
             </div>
 
             <!-- 输入模式切换 -->
@@ -507,6 +532,19 @@
         const errorMsg = document.getElementById('errorMsg');
         const resetBtn = document.getElementById('resetBtn');
         const downloadBtn = document.getElementById('downloadBtn');
+
+        // 显示用户信息
+        const username = localStorage.getItem('username') || '用户';
+        const role = localStorage.getItem('role') || 'user';
+        document.getElementById('userDisplay').textContent = `👤 ${username} (${role === 'admin' ? '管理员' : '用户'})`;
+
+        // 退出登录
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            localStorage.removeItem('role');
+            window.location.href = '/login.html';
+        });
         const studentName = document.getElementById('studentName');
         const fileInput = document.getElementById('fileInput');
         const fileCard = document.getElementById('fileCard');
@@ -685,14 +723,24 @@
         // 高光保存（toggle 当前报告的高光状态）
         let lastReportMarkdown = '';
         let lastSortKey = ''; // 当前报告在 DynamoDB 中的 sort key
+        let lastReportUser = ''; // 当前报告的用户名
         document.getElementById('highlightBtn').addEventListener('click', async function(){
             if (!lastSortKey) return;
-            const name = studentName.value || '新人';
+            
+            // 对于管理员，使用报告对应的用户名；对于普通用户，使用当前登录用户名
+            const currentRole = localStorage.getItem('role');
+            let targetUser;
+            if (currentRole === 'admin' && lastReportUser) {
+                targetUser = lastReportUser;
+            } else {
+                targetUser = studentName.value || localStorage.getItem('username');
+            }
+            
             try {
                 const resp = await fetch('/api/toggle-highlight', {
                     method: 'PATCH',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ trainee_name: name, service_timestamp: lastSortKey })
+                    body: JSON.stringify({ trainee_name: targetUser, service_timestamp: lastSortKey })
                 });
                 if (resp.ok) {
                     const data = await resp.json();
@@ -701,7 +749,7 @@
                     } else {
                         this.textContent = '⭐ 高光保存';
                     }
-                    loadHistory(name);
+                    loadHistory(studentName.value || localStorage.getItem('username'));
                 }
             } catch(e) {}
         });
@@ -710,31 +758,98 @@
         let historyList = [];
         async function loadHistory(name) {
             if (!name) return;
+            const currentRole = localStorage.getItem('role');
+            const token = localStorage.getItem('token');
+            
             try {
-                const resp = await fetch('/api/history/' + encodeURIComponent(name));
-                if (!resp.ok) return;
-                historyList = await resp.json();
+                let endpoint;
+                const headers = {
+                    'Authorization': 'Bearer ' + token
+                };
+                
+                if (currentRole === 'admin') {
+                    // 管理员加载所有用户的记录
+                    endpoint = '/api/admin/all-history';
+                } else {
+                    // 普通用户只加载自己的记录
+                    endpoint = '/api/history/' + encodeURIComponent(name);
+                }
+                
+                const resp = await fetch(endpoint, { headers });
+                if (!resp.ok) {
+                    if (resp.status === 401 || resp.status === 403) {
+                        // 权限问题，可能需要重新登录
+                        console.warn('权限验证失败');
+                        return;
+                    }
+                    return;
+                }
+                
+                if (currentRole === 'admin') {
+                    const data = await resp.json();
+                    historyList = data.status === 'ok' ? data.items : [];
+                } else {
+                    historyList = await resp.json();
+                }
+                
                 renderHistorySidebar();
-            } catch(e) {}
+            } catch(e) {
+                console.error('加载历史记录失败:', e);
+            }
         }
 
         function renderHistorySidebar() {
             const sidebar = document.getElementById('historySidebar');
+            const currentRole = localStorage.getItem('role');
+            
             if (historyList.length === 0) {
-                sidebar.innerHTML = '<h4>🌟 高光记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>';
+                const emptyMessage = currentRole === 'admin' ? 
+                    '<h4>🌟 高光记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 全部历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>' :
+                    '<h4>🌟 高光记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>';
+                sidebar.innerHTML = emptyMessage;
                 return;
             }
 
             let h = '<h4>🌟 高光记录</h4>';
             const highlighted = historyList.filter(i => i.is_highlighted);
-            if (highlighted.length > 0) {
-                highlighted.forEach(item => { h += renderHistoryItem(item); });
+            
+            if (currentRole === 'admin') {
+                // 管理员：按用户分组显示高光记录
+                if (highlighted.length > 0) {
+                    const groupedHighlights = groupByUser(highlighted);
+                    Object.keys(groupedHighlights).sort().forEach(username => {
+                        h += '<div style="font-size:0.7rem;color:#666;margin:8px 0 4px;font-weight:600;">👤 ' + username + '</div>';
+                        groupedHighlights[username].forEach(item => {
+                            h += renderHistoryItem(item, true);
+                        });
+                    });
+                } else {
+                    h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无高光记录</div>';
+                }
+                
+                h += '<h4 style="margin-top:16px;">🕒 全部历史记录</h4>';
+                const groupedHistory = groupByUser(historyList);
+                Object.keys(groupedHistory).sort().forEach(username => {
+                    h += '<div style="font-size:0.7rem;color:#666;margin:8px 0 4px;font-weight:600;">👤 ' + username + '</div>';
+                    // 按时间倒序排列每个用户的记录
+                    const sortedItems = groupedHistory[username].sort((a, b) => 
+                        new Date(b.created_at) - new Date(a.created_at)
+                    );
+                    sortedItems.forEach(item => {
+                        h += renderHistoryItem(item, true);
+                    });
+                });
             } else {
-                h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无高光记录</div>';
+                // 普通用户：正常显示
+                if (highlighted.length > 0) {
+                    highlighted.forEach(item => { h += renderHistoryItem(item, false); });
+                } else {
+                    h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无高光记录</div>';
+                }
+                
+                h += '<h4 style="margin-top:16px;">🕒 我的历史记录</h4>';
+                historyList.forEach(item => { h += renderHistoryItem(item, false); });
             }
-
-            h += '<h4 style="margin-top:16px;">🕒 历史记录</h4>';
-            historyList.forEach(item => { h += renderHistoryItem(item); });
 
             sidebar.innerHTML = h;
 
@@ -747,6 +862,7 @@
                         resultCard.classList.add('active');
                         lastSortKey = this.dataset.sk || '';
                         lastReportMarkdown = data;
+                        lastReportUser = this.dataset.user || ''; // 记录报告对应的用户名
                         const isH = this.dataset.highlighted === 'true';
                         document.getElementById('highlightBtn').textContent = isH ? '⭐ 已高光（再次点击取消）' : '⭐ 高光保存';
                     }
@@ -754,11 +870,23 @@
             });
         }
 
-        function renderHistoryItem(item) {
+        function groupByUser(items) {
+            return items.reduce((groups, item) => {
+                const user = item.trainee_name;
+                if (!groups[user]) {
+                    groups[user] = [];
+                }
+                groups[user].push(item);
+                return groups;
+            }, {});
+        }
+
+        function renderHistoryItem(item, showUser = false) {
             const cls = item.is_highlighted ? 'history-item highlighted' : 'history-item';
             const badge = item.is_highlighted ? '<span class="badge-highlight">⭐</span>' : '';
             const report = encodeURIComponent(item.report_data || '');
-            return '<div class="' + cls + '" data-report="' + report + '" data-sk="' + (item.service_timestamp||'') + '" data-highlighted="' + (item.is_highlighted||false) + '">' +
+            const userLabel = showUser ? '' : ''; // 用户名已经在分组标题中显示
+            return '<div class="' + cls + '" data-report="' + report + '" data-sk="' + (item.service_timestamp||'') + '" data-highlighted="' + (item.is_highlighted||false) + '" data-user="' + (item.trainee_name||'') + '">' +
                 badge + '<div class="h-service">' + (item.service_type || '') + '</div>' +
                 '<div class="h-time">' + (item.created_at || '') + '</div></div>';
         }
@@ -956,10 +1084,155 @@
         }
 
         loadServices();
-        // 姓名输入后自动加载历史
-        studentName.addEventListener('blur', function() {
-            if (this.value.trim()) loadHistory(this.value.trim());
-        });
+        
+        // 根据用户角色初始化姓名输入框
+        const currentRole = localStorage.getItem('role');
+        const currentUsername = localStorage.getItem('username');
+        const userSelect = document.getElementById('userSelect');
+        const loadHistoryBtn = document.getElementById('loadHistoryBtn');
+        const currentUserIndicator = document.getElementById('currentUserIndicator');
+        const currentUserName = document.getElementById('currentUserName');
+        
+        // 更新当前查看用户指示器
+        function updateCurrentUserIndicator(username) {
+            if (currentRole === 'admin') {
+                currentUserIndicator.style.display = 'block';
+                currentUserName.textContent = username + (username === currentUsername ? '（自己）' : '');
+            }
+        }
+        
+        if (currentRole === 'admin') {
+            // 管理员：显示用户选择下拉框和提交按钮
+            studentName.placeholder = "输入用户姓名或从右侧下拉列表选择";
+            userSelect.style.display = 'block';
+            loadHistoryBtn.style.display = 'block';
+            
+            // 加载用户列表到下拉框
+            loadUserList();
+            
+            // 下拉框选择事件
+            userSelect.addEventListener('change', function() {
+                if (this.value) {
+                    studentName.value = this.value;
+                    // 自动触发查看记录
+                    loadHistoryBtn.click();
+                }
+            });
+            
+            // 输入框变化时清除下拉框选择（如果不匹配）
+            studentName.addEventListener('input', function() {
+                const inputValue = this.value;
+                // 检查输入值是否在下拉列表中
+                const options = Array.from(userSelect.options);
+                const matchingOption = options.find(option => option.value === inputValue);
+                if (matchingOption) {
+                    userSelect.value = inputValue;
+                } else {
+                    userSelect.value = '';
+                }
+            });
+            
+            // 回车键提交
+            studentName.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loadHistoryBtn.click();
+                }
+            });
+            
+            // 提交按钮事件
+            loadHistoryBtn.addEventListener('click', function() {
+                const selectedUser = studentName.value.trim();
+                if (selectedUser) {
+                    loadHistory(selectedUser);
+                    updateCurrentUserIndicator(selectedUser);
+                    // 视觉反馈
+                    const originalText = this.textContent;
+                    this.textContent = '加载中...';
+                    this.disabled = true;
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                        this.disabled = false;
+                    }, 800);
+                } else {
+                    alert('请输入或选择用户姓名');
+                    studentName.focus();
+                }
+            });
+            
+            // 默认加载管理员自己的记录
+            studentName.value = currentUsername;
+            loadHistory(currentUsername);
+            updateCurrentUserIndicator(currentUsername);
+            
+        } else {
+            // 普通用户：只能使用自己的用户名，设为只读
+            studentName.value = currentUsername;
+            studentName.readOnly = true;
+            studentName.style.backgroundColor = '#f5f5f5';
+            studentName.style.color = '#666';
+            loadHistory(currentUsername);
+        }
+        
+        // 普通用户的blur事件（管理员通过按钮提交）
+        if (currentRole !== 'admin') {
+            studentName.addEventListener('blur', function() {
+                if (this.value.trim()) loadHistory(this.value.trim());
+            });
+        }
+        
+        // 加载用户列表（仅管理员）
+        async function loadUserList() {
+            if (currentRole !== 'admin') return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/auth/users', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    console.warn('权限验证失败，可能需要重新登录');
+                    return;
+                }
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'ok' && data.users) {
+                        // 清空现有选项，保留默认选项
+                        userSelect.innerHTML = '<option value="">选择用户...</option>';
+                        
+                        // 按用户名排序，管理员优先
+                        const sortedUsers = data.users.sort((a, b) => {
+                            // 管理员排在前面
+                            if (a.role === 'admin' && b.role !== 'admin') return -1;
+                            if (a.role !== 'admin' && b.role === 'admin') return 1;
+                            // 相同角色按姓名排序
+                            return a.trainee_name.localeCompare(b.trainee_name);
+                        });
+                        
+                        // 添加用户选项
+                        sortedUsers.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.trainee_name;
+                            const roleLabel = user.role === 'admin' ? ' 👑' : '';
+                            option.textContent = user.trainee_name + roleLabel;
+                            userSelect.appendChild(option);
+                        });
+                        
+                        // 设置当前管理员为选中状态
+                        userSelect.value = currentUsername;
+                        
+                        console.log(`已加载 ${data.users.length} 个用户到选择列表`);
+                    }
+                }
+            } catch (e) {
+                console.error('加载用户列表失败:', e);
+                // 添加错误选项提示
+                userSelect.innerHTML = '<option value="">加载用户列表失败</option>';
+            }
+        }
         window.onerror = function(msg, url, line) {
             document.getElementById('errorMsg').textContent = 'JS错误: ' + msg + ' (行' + line + ')';
             document.getElementById('errorMsg').classList.add('active');
