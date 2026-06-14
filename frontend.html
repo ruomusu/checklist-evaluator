@@ -37,7 +37,7 @@
             padding: 60px 24px;
             -webkit-font-smoothing: antialiased;
         }
-        .container { width: 100%; max-width: 860px; margin: 0 auto; }
+        .container { width: 100%; max-width: 680px; margin: 0 auto; }
 
         /* Header */
         .header { text-align: center; margin-bottom: 48px; }
@@ -342,13 +342,12 @@
 
         /* 历史记录侧边栏 */
         .history-sidebar {
-            display: none;
             position: fixed;
-            left: 24px;
+            left: 16px;
             top: 50%;
             transform: translateY(-50%);
-            width: 200px;
-            max-height: 70vh;
+            width: 170px;
+            max-height: 65vh;
             overflow-y: auto;
             background: rgba(255,255,255,0.75);
             backdrop-filter: blur(16px);
@@ -356,11 +355,38 @@
             border-radius: 16px;
             border: 1px solid rgba(0,0,0,0.06);
             box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-            padding: 16px 12px;
+            padding: 14px 10px;
             z-index: 1000;
             animation: fadeIn 0.4s ease;
+            transition: transform 0.3s ease, opacity 0.3s ease;
         }
-        .history-sidebar.active { display: block; }
+        .history-sidebar.collapsed {
+            transform: translateY(-50%) translateX(-150px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .history-toggle {
+            position: fixed;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 48px;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 0 10px 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+        .history-toggle:hover { background: #fff; }
+        .history-toggle.expanded { left: 192px; }
         .history-sidebar h4 { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
         .history-item {
             padding: 10px 12px; margin-bottom: 8px; border-radius: 10px;
@@ -445,7 +471,13 @@
         <div class="error-msg" id="errorMsg"></div>
 
         <!-- 历史记录侧边栏 -->
-        <div class="history-sidebar" id="historySidebar"></div>
+        <div class="history-toggle expanded" id="historyToggle" onclick="toggleHistorySidebar()">◀</div>
+        <div class="history-sidebar" id="historySidebar">
+            <h4>🌟 高光记录</h4>
+            <div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">输入姓名后显示</div>
+            <h4 style="margin-top:12px;">🕒 历史记录</h4>
+            <div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">输入姓名后显示</div>
+        </div>
 
         <!-- 侧边导航 -->
         <div class="side-nav" id="sideNav"></div>
@@ -514,6 +546,17 @@
                         document.querySelectorAll('#serviceSwitcher button').forEach(t => t.classList.remove('active'));
                         btn.classList.add('active');
                         loadQuestions(svc.id);
+                        // 切换服务时清除旧报告和导航
+                        resultCard.classList.remove('active');
+                        resultContent.textContent = '';
+                        document.getElementById('sideNav').classList.remove('active');
+                        document.getElementById('highlightBtn').textContent = '⭐ 高光保存';
+                        lastReportMarkdown = '';
+                        lastSortKey = '';
+                        // 清除文件上传状态
+                        fileInput.value = '';
+                        fileCard.classList.remove('has-file');
+                        fileText.innerHTML = '点击或拖拽上传答卷文件<br><small style="color:#aaa;">支持 .md / .txt / .docx</small>';
                     });
                     serviceSwitcher.appendChild(btn);
                 });
@@ -525,17 +568,24 @@
 
         async function loadQuestions(serviceId) {
             questionsList.innerHTML = '<div class="loading-msg">加载题目中...</div>';
-            const resp = await fetch('/api/questions/' + serviceId);
-            questions = await resp.json();
-            questionsList.innerHTML = '';
-            questions.forEach((q, i) => {
-                const card = document.createElement('div');
-                card.className = 'question-card';
-                card.style.animationDelay = (i * 0.05) + 's';
-                card.innerHTML = '<div class="q-title"><span class="q-id">' + q.question_id + '</span>: ' + q.question + '</div>' +
-                    '<textarea data-qid="' + q.question_id + '" placeholder="在此输入答案（可留空跳过）"></textarea>';
-                questionsList.appendChild(card);
-            });
+            try {
+                const resp = await fetch('/api/questions/' + serviceId);
+                questions = await resp.json();
+                questionsList.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const card = document.createElement('div');
+                    card.className = 'question-card';
+                    card.style.animationDelay = (i * 0.05) + 's';
+                    card.innerHTML = '<div class="q-title"><span class="q-id">' + q.question_id + '</span>: ' + q.question + '</div>' +
+                        '<textarea data-qid="' + q.question_id + '" placeholder="在此输入答案（可留空跳过）"></textarea>';
+                    questionsList.appendChild(card);
+                });
+                if (questions.length === 0) {
+                    questionsList.innerHTML = '<div class="loading-msg">该服务暂无题目</div>';
+                }
+            } catch(e) {
+                questionsList.innerHTML = '<div class="loading-msg" style="color:var(--fail);">题目加载失败: ' + e.message + '</div>';
+            }
         }
 
         submitBtn.addEventListener('click', async function() {
@@ -670,7 +720,10 @@
 
         function renderHistorySidebar() {
             const sidebar = document.getElementById('historySidebar');
-            if (historyList.length === 0) { sidebar.classList.remove('active'); return; }
+            if (historyList.length === 0) {
+                sidebar.innerHTML = '<h4>🌟 高光记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>';
+                return;
+            }
 
             let h = '<h4>🌟 高光记录</h4>';
             const highlighted = historyList.filter(i => i.is_highlighted);
@@ -684,7 +737,6 @@
             historyList.forEach(item => { h += renderHistoryItem(item); });
 
             sidebar.innerHTML = h;
-            sidebar.classList.add('active');
 
             // 绑定点击事件
             sidebar.querySelectorAll('.history-item').forEach(el => {
@@ -693,7 +745,6 @@
                     if (data) {
                         renderReport(data);
                         resultCard.classList.add('active');
-                        // 更新当前 sort key 以便 toggle
                         lastSortKey = this.dataset.sk || '';
                         lastReportMarkdown = data;
                         const isH = this.dataset.highlighted === 'true';
@@ -888,6 +939,20 @@
             // Convert Markdown links [title](url) to clickable <a> tags
             escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:none;border-bottom:1px solid var(--primary);">$1</a>');
             return escaped;
+        }
+
+        function toggleHistorySidebar() {
+            const sidebar = document.getElementById('historySidebar');
+            const toggle = document.getElementById('historyToggle');
+            if (sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+                toggle.classList.add('expanded');
+                toggle.textContent = '◀';
+            } else {
+                sidebar.classList.add('collapsed');
+                toggle.classList.remove('expanded');
+                toggle.textContent = '▶';
+            }
         }
 
         loadServices();
