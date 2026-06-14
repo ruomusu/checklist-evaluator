@@ -25,6 +25,7 @@ from models import KnowledgeItem, StudentAnswer, ReadingGuideItem
 from evaluator import Evaluator
 from report_generator import ReportGenerator
 from knowledge_provider import create_provider
+from storage import save_report as db_save_report, get_history as db_get_history, toggle_highlight as db_toggle_highlight
 
 import re
 
@@ -151,6 +152,19 @@ async def _stream_evaluate_answers(
     markdown_report = generator.generate_markdown(report)
     generator.save_report(report)
 
+    # 自动保存到 DynamoDB
+    saved_sort_key = ''
+    try:
+        item = db_save_report(
+            trainee_name=student_name,
+            service_type=service_type,
+            report_data=markdown_report,
+            is_highlighted=False,
+        )
+        saved_sort_key = item.get("service_timestamp", "")
+    except Exception as e:
+        log(f"DynamoDB 自动保存失败（非致命）: {e}", stage="ERROR", level=logging.WARNING)
+
     total_elapsed = time.time() - total_start
     log(f"API 评估完成 | 总耗时: {total_elapsed:.1f}s", stage="DONE")
 
@@ -161,7 +175,7 @@ async def _stream_evaluate_answers(
         yield f"event: content\ndata: {data_line}\n\n"
         await asyncio.sleep(0.02)
 
-    yield "event: done\ndata: \n\n"
+    yield "event: done" + "\n" + "data: " + saved_sort_key + "\n\n"
 
 
 @app.post("/evaluate", include_in_schema=False)
@@ -180,6 +194,66 @@ async def evaluate(request: EvaluateRequest):
 # ============================================================
 # 前端页面
 # ============================================================
+
+class SaveReportRequest(BaseModel):
+    trainee_name: str
+    service_type: str
+    report_data: str
+    is_highlighted: bool = False
+
+
+@app.post("/api/save-report", include_in_schema=False)
+async def save_report_endpoint(request: SaveReportRequest):
+    """保存评估报告到 DynamoDB"""
+    try:
+        item = db_save_report(
+            trainee_name=request.trainee_name,
+            service_type=request.service_type,
+            report_data=request.report_data,
+            is_highlighted=request.is_highlighted,
+        )
+        return JSONResponse(content={"status": "ok", "sort_key": item["service_timestamp"]})
+    except Exception as e:
+        log(f"DynamoDB 保存失败: {e}", stage="ERROR", level=logging.ERROR)
+        raise HTTPException(status_code=500, detail=f"保存失败: {e}")
+
+
+class ToggleHighlightRequest(BaseModel):
+    trainee_name: str
+    service_timestamp: str
+
+
+@app.patch("/api/toggle-highlight", include_in_schema=False)
+async def toggle_highlight_endpoint(request: ToggleHighlightRequest):
+    """翻转某条记录的高光状态"""
+    try:
+        new_state = db_toggle_highlight(request.trainee_name, request.service_timestamp)
+        return JSONResponse(content={"status": "ok", "is_highlighted": new_state})
+    except Exception as e:
+        log(f"DynamoDB toggle 失败: {e}", stage="ERROR", level=logging.ERROR)
+        raise HTTPException(status_code=500, detail=f"操作失败: {e}")
+
+
+@app.get("/api/history/{trainee_name}", include_in_schema=False)
+async def get_history_endpoint(trainee_name: str):
+    """查询某新人的所有历史评估记录"""
+    try:
+        items = db_get_history(trainee_name)
+        import json
+        from decimal import Decimal
+
+        class DecimalEncoder(json.JSONEncoder):
+            def default(self, o):
+                if isinstance(o, Decimal):
+                    return int(o) if o == int(o) else float(o)
+                return super().default(o)
+
+        clean_items = json.loads(json.dumps(items, cls=DecimalEncoder))
+        return JSONResponse(content=clean_items)
+    except Exception as e:
+        log(f"DynamoDB 查询失败: {e}", stage="ERROR", level=logging.ERROR)
+        raise HTTPException(status_code=500, detail=f"查询失败: {e}")
+
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def frontend_page():

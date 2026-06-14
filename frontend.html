@@ -339,6 +339,53 @@
         .side-nav .nav-item.satisfactory { background: var(--satisfactory-bg); color: #8a5e00; border: 1px solid var(--satisfactory); }
         .side-nav .nav-item.fail { background: var(--fail-bg); color: #a83232; border: 1px solid var(--fail); }
         @media (max-width: 1100px) { .side-nav { display: none !important; } }
+
+        /* 历史记录侧边栏 */
+        .history-sidebar {
+            display: none;
+            position: fixed;
+            left: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 200px;
+            max-height: 70vh;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            padding: 16px 12px;
+            z-index: 1000;
+            animation: fadeIn 0.4s ease;
+        }
+        .history-sidebar.active { display: block; }
+        .history-sidebar h4 { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .history-item {
+            padding: 10px 12px; margin-bottom: 8px; border-radius: 10px;
+            background: #fff; border: 1px solid var(--border); cursor: pointer;
+            transition: all 0.2s; font-size: 0.78rem; position: relative;
+        }
+        .history-item:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .history-item.highlighted {
+            border-color: #ffd700; background: linear-gradient(135deg, #fffef0, #fff9e0);
+            box-shadow: 0 2px 12px rgba(255,215,0,0.2);
+        }
+        .history-item .badge-highlight {
+            position: absolute; top: -4px; right: -4px;
+            background: #ffd700; color: #333; font-size: 0.6rem; font-weight: 700;
+            padding: 2px 6px; border-radius: 8px;
+        }
+        .history-item .h-service { font-weight: 600; color: var(--text); }
+        .history-item .h-time { color: var(--text-secondary); font-size: 0.7rem; margin-top: 2px; }
+        .highlight-btn {
+            padding: 10px 20px; border: 2px solid #ffd700; border-radius: 8px;
+            background: linear-gradient(135deg, #fffef0, #fff9e0); color: #8a6d00;
+            font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+        }
+        .highlight-btn:hover { background: #ffd700; color: #333; }
+        @media (max-width: 1000px) { .history-sidebar { display: none !important; } }
     </style>
 </head>
 <body>
@@ -397,6 +444,9 @@
         <!-- 错误 -->
         <div class="error-msg" id="errorMsg"></div>
 
+        <!-- 历史记录侧边栏 -->
+        <div class="history-sidebar" id="historySidebar"></div>
+
         <!-- 侧边导航 -->
         <div class="side-nav" id="sideNav"></div>
 
@@ -405,6 +455,7 @@
             <div class="result-content" id="resultContent"></div>
             <div class="btn-row">
                 <button class="btn-secondary btn-reset" id="resetBtn">重新评估</button>
+                <button class="highlight-btn" id="highlightBtn">⭐ 高光保存</button>
                 <button class="btn-secondary btn-download" id="downloadBtn">下载报告</button>
             </div>
         </div>
@@ -555,11 +606,11 @@
                             resultContent.textContent=reportBuffer;
                             const c=document.createElement('span');c.className='cursor';resultContent.appendChild(c);
                             resultCard.scrollTop=resultCard.scrollHeight;
-                        }else if(ev==='done'){stopProgress();statusBar.classList.remove('active');renderReport(reportBuffer);}
+                        }else if(ev==='done'){stopProgress();statusBar.classList.remove('active');lastReportMarkdown=reportBuffer;lastSortKey=data;renderReport(reportBuffer);loadHistory(studentName.value||'新人');document.getElementById('highlightBtn').textContent='⭐ 高光保存';}
                     }
                 }
                 statusBar.classList.remove('active');
-                if(reportBuffer){renderReport(reportBuffer);resultCard.classList.add('active');}
+                if(reportBuffer){lastReportMarkdown=reportBuffer;renderReport(reportBuffer);resultCard.classList.add('active');loadHistory(studentName.value||'新人');}
             } catch(e) { stopProgress(); statusBar.classList.remove('active'); showError('网络连接失败'); mainPanel.style.display='block'; }
         });
 
@@ -568,6 +619,9 @@
         resetBtn.addEventListener('click', function(){
             resultCard.classList.remove('active'); mainPanel.style.display='block'; resultContent.textContent=''; errorMsg.classList.remove('active');
             document.getElementById('sideNav').classList.remove('active');
+            document.getElementById('highlightBtn').textContent = '⭐ 高光保存';
+            lastReportMarkdown = '';
+            lastSortKey = '';
         });
         downloadBtn.addEventListener('click', function(){
             const content=resultContent.textContent; if(!content)return;
@@ -577,6 +631,86 @@
             const a=document.createElement('a');a.href=url;a.download='评估报告_'+name+'_'+new Date().toISOString().slice(0,10)+'.md';
             document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
         });
+
+        // 高光保存（toggle 当前报告的高光状态）
+        let lastReportMarkdown = '';
+        let lastSortKey = ''; // 当前报告在 DynamoDB 中的 sort key
+        document.getElementById('highlightBtn').addEventListener('click', async function(){
+            if (!lastSortKey) return;
+            const name = studentName.value || '新人';
+            try {
+                const resp = await fetch('/api/toggle-highlight', {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ trainee_name: name, service_timestamp: lastSortKey })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.is_highlighted) {
+                        this.textContent = '⭐ 已高光（再次点击取消）';
+                    } else {
+                        this.textContent = '⭐ 高光保存';
+                    }
+                    loadHistory(name);
+                }
+            } catch(e) {}
+        });
+
+        // 历史记录加载与渲染
+        let historyList = [];
+        async function loadHistory(name) {
+            if (!name) return;
+            try {
+                const resp = await fetch('/api/history/' + encodeURIComponent(name));
+                if (!resp.ok) return;
+                historyList = await resp.json();
+                renderHistorySidebar();
+            } catch(e) {}
+        }
+
+        function renderHistorySidebar() {
+            const sidebar = document.getElementById('historySidebar');
+            if (historyList.length === 0) { sidebar.classList.remove('active'); return; }
+
+            let h = '<h4>🌟 高光记录</h4>';
+            const highlighted = historyList.filter(i => i.is_highlighted);
+            if (highlighted.length > 0) {
+                highlighted.forEach(item => { h += renderHistoryItem(item); });
+            } else {
+                h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无高光记录</div>';
+            }
+
+            h += '<h4 style="margin-top:16px;">🕒 历史记录</h4>';
+            historyList.forEach(item => { h += renderHistoryItem(item); });
+
+            sidebar.innerHTML = h;
+            sidebar.classList.add('active');
+
+            // 绑定点击事件
+            sidebar.querySelectorAll('.history-item').forEach(el => {
+                el.addEventListener('click', function() {
+                    const data = decodeURIComponent(this.dataset.report || '');
+                    if (data) {
+                        renderReport(data);
+                        resultCard.classList.add('active');
+                        // 更新当前 sort key 以便 toggle
+                        lastSortKey = this.dataset.sk || '';
+                        lastReportMarkdown = data;
+                        const isH = this.dataset.highlighted === 'true';
+                        document.getElementById('highlightBtn').textContent = isH ? '⭐ 已高光（再次点击取消）' : '⭐ 高光保存';
+                    }
+                });
+            });
+        }
+
+        function renderHistoryItem(item) {
+            const cls = item.is_highlighted ? 'history-item highlighted' : 'history-item';
+            const badge = item.is_highlighted ? '<span class="badge-highlight">⭐</span>' : '';
+            const report = encodeURIComponent(item.report_data || '');
+            return '<div class="' + cls + '" data-report="' + report + '" data-sk="' + (item.service_timestamp||'') + '" data-highlighted="' + (item.is_highlighted||false) + '">' +
+                badge + '<div class="h-service">' + (item.service_type || '') + '</div>' +
+                '<div class="h-time">' + (item.created_at || '') + '</div></div>';
+        }
 
         function renderReport(text) {
             let html = '';
@@ -757,6 +891,10 @@
         }
 
         loadServices();
+        // 姓名输入后自动加载历史
+        studentName.addEventListener('blur', function() {
+            if (this.value.trim()) loadHistory(this.value.trim());
+        });
         window.onerror = function(msg, url, line) {
             document.getElementById('errorMsg').textContent = 'JS错误: ' + msg + ' (行' + line + ')';
             document.getElementById('errorMsg').classList.add('active');
