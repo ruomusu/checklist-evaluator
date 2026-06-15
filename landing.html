@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist Evaluator - 智能技术能力评估平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --primary-deep: #4f46e5;
+            --accent: #06b6d4;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --sidebar-width: 200px;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', sans-serif;
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        html { scroll-behavior: smooth; }
+
+        /* 侧边栏 */
+        .sidebar {
+            position: fixed; left: 0; top: 0;
+            width: var(--sidebar-width); height: 100vh;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(0,0,0,0.04);
+            padding: 28px 18px; z-index: 100;
+        }
+        .sidebar .logo {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; font-weight: 700;
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 40px;
+        }
+        .sidebar .logo span { -webkit-text-fill-color: initial; font-size: 1.2rem; }
+        .sidebar nav a {
+            display: block; padding: 10px 14px; margin-bottom: 4px;
+            border-radius: 10px; font-size: 0.84rem; font-weight: 500;
+            color: var(--text-secondary); text-decoration: none;
+            transition: all 0.25s;
+        }
+        .sidebar nav a:hover { color: var(--primary); background: rgba(99,102,241,0.06); }
+        .sidebar nav a.active {
+            color: var(--primary); font-weight: 600;
+            background: rgba(99,102,241,0.1);
+            box-shadow: 0 2px 8px rgba(99,102,241,0.08);
+        }
+
+        /* 主内容 */
+        .main {
+            margin-left: var(--sidebar-width);
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(99,102,241,0.07) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 60%, rgba(6,182,212,0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 90%, rgba(168,85,247,0.04) 0%, transparent 40%),
+                #fafbff;
+            min-height: 100vh;
+        }
+
+        /* Hero */
+        .hero {
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            padding: 60px 40px; position: relative;
+        }
+        .hero-icon {
+            width: 110px; height: 110px; margin-bottom: 32px;
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            border-radius: 30px; display: flex; align-items: center; justify-content: center;
+            font-size: 2.8rem; color: #fff;
+            box-shadow: 0 20px 60px rgba(99,102,241,0.3), 0 0 80px rgba(99,102,241,0.1);
+            animation: iconFloat 5s ease-in-out infinite;
+        }
+        @keyframes iconFloat { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-8px) rotate(1deg)} }
+
+        .hero h1 {
+            font-size: 3.6rem; font-weight: 800; letter-spacing: -1.5px;
+            background: linear-gradient(135deg, #4f46e5, #06b6d4, #8b5cf6);
+            background-size: 200% 200%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: gradientShift 6s ease infinite;
+            margin-bottom: 14px;
+        }
+        @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
+        .hero .subtitle {
+            font-size: 1.2rem; font-weight: 500; color: var(--text);
+            margin-bottom: 18px; letter-spacing: 0.3px;
+        }
+        .hero .desc {
+            font-size: 0.95rem; color: var(--text-secondary); line-height: 1.9;
+            max-width: 500px; margin-bottom: 40px;
+        }
+
+        /* 主按钮 */
+        .btn-cta {
+            padding: 15px 36px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: #fff; border: none; border-radius: 14px;
+            font-size: 1rem; font-weight: 600; letter-spacing: 0.3px;
+            cursor: pointer; text-decoration: none;
+            box-shadow: 0 8px 32px rgba(99,102,241,0.4), 0 0 60px rgba(99,102,241,0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(99,102,241,0.5), 0 0 80px rgba(99,102,241,0.2);
+        }
+
+        /* 悬浮毛玻璃徽章 */
+        .floating-badge {
+            position: absolute;
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 16px;
+            padding: 10px 18px;
+            font-size: 0.8rem; font-weight: 500;
+            color: var(--text);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+        .badge-1 { top: 18%; left: 8%; animation: badgeFloat1 6s ease-in-out infinite; }
+        .badge-2 { top: 25%; right: 8%; animation: badgeFloat2 7s ease-in-out infinite; }
+        .badge-3 { bottom: 22%; left: 12%; animation: badgeFloat3 5s ease-in-out infinite; }
+        .badge-4 { bottom: 30%; right: 10%; animation: badgeFloat1 8s ease-in-out infinite; }
+        @keyframes badgeFloat1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        @keyframes badgeFloat2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+        @keyframes badgeFloat3 { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-6px) translateX(4px)} }
+
+        /* Section 通用 */
+        section { padding: 100px 48px; max-width: 900px; margin: 0 auto; }
+        section h2 {
+            font-size: 1.7rem; font-weight: 700; margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        section .section-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 36px; }
+
+        /* 痛点 */
+        .pain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        .pain-card {
+            background: rgba(255,255,255,0.7); backdrop-filter: blur(8px);
+            border-radius: 16px; padding: 26px;
+            border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 2px 16px rgba(0,0,0,0.03);
+            transition: all 0.25s;
+        }
+        .pain-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.06); }
+        .pain-card .emoji { font-size: 1.6rem; margin-bottom: 12px; }
+        .pain-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
+        .pain-card p { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; }
+
+        /* 功能 */
+        .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        .feat-card {
+            background: rgba(255,255,255,0.75); backdrop-filter: blur(8px);
+            border-radius: 16px; padding: 26px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.8);
+            transition: all 0.3s;
+        }
+        .feat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(99,102,241,0.1); }
+        .feat-card .icon { font-size: 2rem; margin-bottom: 14px; }
+        .feat-card h4 { font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+        .feat-card p { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; }
+
+        /* 流程 */
+        .flow { position: relative; }
+        .flow::before {
+            content: ''; position: absolute; left: 19px; top: 24px; bottom: 24px;
+            width: 2px; background: linear-gradient(to bottom, var(--primary), var(--accent));
+            border-radius: 2px; opacity: 0.4;
+        }
+        .flow-step { display: flex; gap: 20px; padding: 20px 0; position: relative; }
+        .flow-dot {
+            width: 40px; height: 40px; min-width: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: #fff; font-weight: 700; font-size: 0.82rem; z-index: 1;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.25);
+        }
+        .flow-content h4 { font-size: 0.92rem; font-weight: 600; margin-bottom: 4px; }
+        .flow-content p { font-size: 0.84rem; color: var(--text-secondary); }
+
+        /* 报告示例 */
+        .report-preview {
+            background: rgba(255,255,255,0.8); backdrop-filter: blur(8px);
+            border-radius: 18px; padding: 32px;
+            border: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+        }
+        .report-preview .badge {
+            display: inline-block; padding: 5px 14px; border-radius: 20px;
+            font-size: 0.75rem; font-weight: 600; margin-right: 8px; margin-bottom: 8px;
+        }
+        .badge-e { background: #ecfdf5; color: #059669; }
+        .badge-s { background: #fffbeb; color: #d97706; }
+        .badge-f { background: #fef2f2; color: #dc2626; }
+        .report-line { font-size: 0.84rem; color: var(--text-secondary); line-height: 2; margin-top: 16px; }
+        .report-line strong { color: var(--text); }
+
+        /* 适用场景 */
+        .scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .scenario-item {
+            background: rgba(255,255,255,0.7); backdrop-filter: blur(8px);
+            border-radius: 14px; padding: 22px;
+            border: 1px solid rgba(255,255,255,0.8);
+            transition: all 0.25s;
+        }
+        .scenario-item:hover { background: rgba(99,102,241,0.04); border-color: rgba(99,102,241,0.15); }
+        .scenario-item h4 { font-size: 0.88rem; font-weight: 600; margin-bottom: 4px; }
+        .scenario-item p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+
+        .footer {
+            text-align: center; padding: 48px 0;
+            color: var(--text-secondary); font-size: 0.8rem;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .feat-grid, .pain-grid, .scenario-grid { grid-template-columns: 1fr; }
+            .floating-badge { display: none; }
+            .hero h1 { font-size: 2.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo"><span>📋</span> Checklist Eval</div>
+        <nav>
+            <a href="#hero" class="active">首页</a>
+            <a href="#pain">解决痛点</a>
+            <a href="#features">核心能力</a>
+            <a href="#flow">使用流程</a>
+            <a href="#report">报告示例</a>
+            <a href="#scenarios">适用场景</a>
+        </nav>
+    </div>
+
+    <div class="main">
+        <div class="hero" id="hero">
+            <!-- 悬浮徽章 -->
+            <div class="floating-badge badge-1">☁️ Amazon 架构评估</div>
+            <div class="floating-badge badge-2">🤖 AI 精准挑错</div>
+            <div class="floating-badge badge-4">📊 量化评分体系</div>
+
+            <div class="hero-icon">📋</div>
+            <h1>Checklist Evaluator</h1>
+            <div class="subtitle">AI 驱动的技术能力自动评估平台</div>
+            <div class="desc">
+                上传 Checklist 作答文件，AI 秒级生成结构化评估报告。<br>
+                精准量化每道题的掌握程度，直观暴露知识盲区，<br>
+                让技术成长有迹可循。
+            </div>
+            <a href="http://13.115.255.219:8000/" class="btn-cta">立即使用 →</a>
+        </div>
+
+        <section id="pain">
+            <h2>解决痛点</h2>
+            <p class="section-desc">传统 Checklist 评估方式的核心问题</p>
+            <div class="pain-grid">
+                <div class="pain-card"><div class="emoji">⏰</div><h4>导师时间严重消耗</h4><p>每份答卷需逐题人工对比，一份 25 题评估耗时 30-60 分钟</p></div>
+                <div class="pain-card"><div class="emoji">🎯</div><h4>评判标准不统一</h4><p>不同导师判定尺度不一致，同份答卷可能得到截然不同评价</p></div>
+                <div class="pain-card"><div class="emoji">📊</div><h4>反馈缺乏量化</h4><p>只能给出模糊的通过/不通过，无法精确定位薄弱知识点</p></div>
+                <div class="pain-card"><div class="emoji">📁</div><h4>历史无法追溯</h4><p>评估结果散落各处，无法追踪新人技术成长轨迹</p></div>
+            </div>
+        </section>
+
+        <section id="features">
+            <h2>核心能力</h2>
+            <p class="section-desc">从评估到归档，全流程智能化</p>
+            <div class="feat-grid">
+                <div class="feat-card"><div class="icon">🤖</div><h4>AI 精准评估</h4><p>大模型逐题对比标准答案，量化打分并指出缺失点</p></div>
+                <div class="feat-card"><div class="icon">📈</div><h4>三级评分体系</h4><p>Excellent / Satisfactory / Fail + 精确百分比</p></div>
+                <div class="feat-card"><div class="icon">🌐</div><h4>多服务覆盖</h4><p>EC2、EBS、S3 等独立题库，自由切换</p></div>
+                <div class="feat-card"><div class="icon">⚡</div><h4>实时流式输出</h4><p>评估结果逐行打字输出，等待过程清晰</p></div>
+                <div class="feat-card"><div class="icon">💾</div><h4>智能存档</h4><p>自动保存，高光标记，历史回看</p></div>
+                <div class="feat-card"><div class="icon">🌏</div><h4>中国区适配</h4><p>自动判定服务在中国区的可用性</p></div>
+            </div>
+        </section>
+
+        <section id="flow">
+            <h2>使用流程</h2>
+            <p class="section-desc">三步完成评估</p>
+            <div class="flow">
+                <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><h4>选择服务 & 提交答卷</h4><p>切换 Amazon 服务，上传文件或在线逐题作答</p></div></div>
+                <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><h4>AI 自动评估</h4><p>大模型逐题对比标准答案，实时流式输出进度</p></div></div>
+                <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><h4>查看报告 & 存档</h4><p>按评级分组查看评估，标记高光，下载报告</p></div></div>
+            </div>
+        </section>
+
+        <section id="report">
+            <h2>报告示例</h2>
+            <p class="section-desc">清晰的分组展示，一目了然</p>
+            <div class="report-preview">
+                <div>
+                    <span class="badge badge-e">✅ Excellent 12题</span>
+                    <span class="badge badge-s">⚠️ Satisfactory 8题</span>
+                    <span class="badge badge-f">❌ Fail 5题</span>
+                </div>
+                <div class="report-line">
+                    <strong>Q6: 一个实例可以关联多个 ENI 吗？</strong> — Satisfactory (75%)<br>
+                    <span style="color:#059669;">🌟 正确回答可关联多个 ENI，指出不同实例类型支持数量不同</span><br>
+                    <span style="color:#d97706;">⚠️ 未说明每个 ENI 可独立绑定安全组进行流量控制</span><br>
+                    <span style="color:#d97706;">⚠️ 未提及默认路由表只指向主 ENI，需手动配置路由</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="scenarios">
+            <h2>适用场景</h2>
+            <p class="section-desc">覆盖技术评估全场景</p>
+            <div class="scenario-grid">
+                <div class="scenario-item"><h4>🎓 新人入职培训</h4><p>自动评估新人对 Amazon 核心服务的掌握程度</p></div>
+                <div class="scenario-item"><h4>👥 团队技能盘点</h4><p>批量评估团队成员水平，为培训计划提供数据支撑</p></div>
+                <div class="scenario-item"><h4>📝 认证备考检测</h4><p>模拟知识检测，量化备考进度</p></div>
+                <div class="scenario-item"><h4>💼 面试技术评估</h4><p>标准化评估流程，减少主观判断偏差</p></div>
+            </div>
+        </section>
+
+        <div class="footer">Checklist Evaluator — 让技术能力评估更智能、更公正、更高效</div>
+    </div>
+
+    <script>
+        const navLinks = document.querySelectorAll('.sidebar nav a');
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    const link = document.querySelector('.sidebar nav a[href="#' + entry.target.id + '"]');
+                    if (link) link.classList.add('active');
+                }
+            });
+        }, { threshold: 0.3 });
+        document.querySelectorAll('section, .hero').forEach(s => observer.observe(s));
+    </script>
+</body>
+</html>

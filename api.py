@@ -358,6 +358,12 @@ def frontend_page():
     return HTMLResponse(content=html, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
+@app.get("/landing", response_class=HTMLResponse, include_in_schema=False)
+def landing_page():
+    html = Path(__file__).parent.joinpath("landing.html").read_text(encoding="utf-8")
+    return HTMLResponse(content=html, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
 @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
 def login_page():
     html = Path(__file__).parent.joinpath("login.html").read_text(encoding="utf-8")
