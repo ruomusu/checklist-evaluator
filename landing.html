@@ -259,7 +259,7 @@
                 精准量化每道题的掌握程度，直观暴露知识盲区，<br>
                 让技术成长有迹可循。
             </div>
-            <a href="http://13.115.255.219:8000/" class="btn-cta">立即使用 →</a>
+            <a href="#" id="ctaButton" class="btn-cta">立即使用 →</a>
         </div>
 
         <section id="pain">
@@ -329,6 +329,25 @@
     </div>
 
     <script>
+        // 动态设置立即使用按钮的链接
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctaButton = document.getElementById('ctaButton');
+            const currentHost = window.location.host; // 获取当前域名和端口
+            const currentProtocol = window.location.protocol; // 获取当前协议 (http: 或 https:)
+            
+            // 构建目标URL，跳转到登录页面
+            const targetUrl = `${currentProtocol}//${currentHost}/login.html`;
+            
+            ctaButton.href = targetUrl;
+            
+            // 点击事件处理
+            ctaButton.addEventListener('click', function(e) {
+                e.preventDefault(); // 阻止默认链接行为
+                window.location.href = targetUrl; // 跳转到登录页面
+            });
+        });
+
+        // 导航高亮逻辑
         const navLinks = document.querySelectorAll('.sidebar nav a');
         const observer = new IntersectionObserver(entries => {
             entries.forEach(entry => {
