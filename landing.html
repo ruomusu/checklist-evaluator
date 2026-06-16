@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checklist Evaluator - 智能技术能力评估平台</title>
+    <title>Checklist Evaluator - AI 驱动的CheckList自助评估系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -35,7 +35,9 @@
             display: flex; align-items: center; gap: 8px;
             font-size: 0.9rem; font-weight: 700;
             background: linear-gradient(135deg, #6366f1, #06b6d4);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
             margin-bottom: 40px;
         }
         .sidebar .logo span { -webkit-text-fill-color: initial; font-size: 1.2rem; }
@@ -55,6 +57,7 @@
         /* 主内容 */
         .main {
             margin-left: var(--sidebar-width);
+            padding-right: calc(var(--sidebar-width) - 40px);
             background:
                 radial-gradient(ellipse at 20% 20%, rgba(99,102,241,0.07) 0%, transparent 50%),
                 radial-gradient(ellipse at 80% 60%, rgba(6,182,212,0.05) 0%, transparent 50%),
@@ -80,10 +83,12 @@
         @keyframes iconFloat { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-8px) rotate(1deg)} }
 
         .hero h1 {
-            font-size: 3.6rem; font-weight: 800; letter-spacing: -1.5px;
+            font-size: 3.2rem; font-weight: 800; letter-spacing: -1.5px;
             background: linear-gradient(135deg, #4f46e5, #06b6d4, #8b5cf6);
             background-size: 200% 200%;
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
             animation: gradientShift 6s ease infinite;
             margin-bottom: 14px;
         }
@@ -95,7 +100,7 @@
         }
         .hero .desc {
             font-size: 0.95rem; color: var(--text-secondary); line-height: 1.9;
-            max-width: 500px; margin-bottom: 40px;
+            max-width: 560px; margin-bottom: 40px;
         }
 
         /* 主按钮 */
@@ -135,40 +140,29 @@
         @keyframes badgeFloat3 { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-6px) translateX(4px)} }
 
         /* Section 通用 */
-        section { padding: 100px 48px; max-width: 900px; margin: 0 auto; }
+        section { padding: 100px 60px; max-width: 1000px; margin: 0 auto; }
         section h2 {
             font-size: 1.7rem; font-weight: 700; margin-bottom: 12px;
             background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
         section .section-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 36px; }
 
-        /* 痛点 */
-        .pain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-        .pain-card {
+        /* 使用场景（好处） */
+        .benefits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        .benefit-card {
             background: rgba(255,255,255,0.7); backdrop-filter: blur(8px);
             border-radius: 16px; padding: 26px;
             border: 1px solid rgba(255,255,255,0.8);
             box-shadow: 0 2px 16px rgba(0,0,0,0.03);
             transition: all 0.25s;
         }
-        .pain-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.06); }
-        .pain-card .emoji { font-size: 1.6rem; margin-bottom: 12px; }
-        .pain-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
-        .pain-card p { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; }
-
-        /* 功能 */
-        .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-        .feat-card {
-            background: rgba(255,255,255,0.75); backdrop-filter: blur(8px);
-            border-radius: 16px; padding: 26px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.8);
-            transition: all 0.3s;
-        }
-        .feat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(99,102,241,0.1); }
-        .feat-card .icon { font-size: 2rem; margin-bottom: 14px; }
-        .feat-card h4 { font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
-        .feat-card p { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; }
+        .benefit-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.06); }
+        .benefit-card .emoji { font-size: 1.6rem; margin-bottom: 12px; }
+        .benefit-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
+        .benefit-card p { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; }
 
         /* 流程 */
         .flow { position: relative; }
@@ -195,27 +189,29 @@
             border: 1px solid rgba(255,255,255,0.9);
             box-shadow: 0 8px 32px rgba(0,0,0,0.04);
         }
-        .report-preview .badge {
-            display: inline-block; padding: 5px 14px; border-radius: 20px;
-            font-size: 0.75rem; font-weight: 600; margin-right: 8px; margin-bottom: 8px;
+        .report-screenshots {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
         }
-        .badge-e { background: #ecfdf5; color: #059669; }
-        .badge-s { background: #fffbeb; color: #d97706; }
-        .badge-f { background: #fef2f2; color: #dc2626; }
-        .report-line { font-size: 0.84rem; color: var(--text-secondary); line-height: 2; margin-top: 16px; }
-        .report-line strong { color: var(--text); }
-
-        /* 适用场景 */
-        .scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .scenario-item {
-            background: rgba(255,255,255,0.7); backdrop-filter: blur(8px);
-            border-radius: 14px; padding: 22px;
-            border: 1px solid rgba(255,255,255,0.8);
-            transition: all 0.25s;
+        .report-screenshot {
+            border-radius: 12px; overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            transition: all 0.3s;
+            cursor: pointer;
         }
-        .scenario-item:hover { background: rgba(99,102,241,0.04); border-color: rgba(99,102,241,0.15); }
-        .scenario-item h4 { font-size: 0.88rem; font-weight: 600; margin-bottom: 4px; }
-        .scenario-item p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+        .report-screenshot:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(99,102,241,0.15);
+        }
+        .report-screenshot img {
+            width: 100%; height: auto; display: block;
+        }
+        .report-screenshot .screenshot-caption {
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.95);
+            font-size: 0.78rem; color: var(--text-secondary);
+            text-align: center; font-weight: 500;
+        }
 
         .footer {
             text-align: center; padding: 48px 0;
@@ -224,10 +220,11 @@
 
         @media (max-width: 900px) {
             .sidebar { display: none; }
-            .main { margin-left: 0; }
-            .feat-grid, .pain-grid, .scenario-grid { grid-template-columns: 1fr; }
+            .main { margin-left: 0; padding-right: 0; }
+            .benefits-grid { grid-template-columns: 1fr; }
+            .report-screenshots { grid-template-columns: 1fr; }
             .floating-badge { display: none; }
-            .hero h1 { font-size: 2.4rem; }
+            .hero h1 { font-size: 2.2rem; }
         }
     </style>
 </head>
@@ -236,114 +233,86 @@
         <div class="logo"><span>📋</span> Checklist Eval</div>
         <nav>
             <a href="#hero" class="active">首页</a>
-            <a href="#pain">解决痛点</a>
-            <a href="#features">核心能力</a>
-            <a href="#flow">使用流程</a>
+            <a href="#scenarios">使用场景</a>
+            <a href="#flow">使用步骤</a>
             <a href="#report">报告示例</a>
-            <a href="#scenarios">适用场景</a>
         </nav>
     </div>
 
     <div class="main">
         <div class="hero" id="hero">
             <!-- 悬浮徽章 -->
-            <div class="floating-badge badge-1">☁️ Amazon 架构评估</div>
-            <div class="floating-badge badge-2">🤖 AI 精准挑错</div>
-            <div class="floating-badge badge-4">📊 量化评分体系</div>
+            <div class="floating-badge badge-1">⏰ 导师高效掌握全局</div>
+            <div class="floating-badge badge-2">🤖 AI 智能评估</div>
 
             <div class="hero-icon">📋</div>
             <h1>Checklist Evaluator</h1>
-            <div class="subtitle">AI 驱动的技术能力自动评估平台</div>
+            <div class="subtitle">AI 驱动的 CheckList 自助评估系统</div>
             <div class="desc">
-                上传 Checklist 作答文件，AI 秒级生成结构化评估报告。<br>
-                精准量化每道题的掌握程度，直观暴露知识盲区，<br>
-                让技术成长有迹可循。
+                自动评估New Hire对 Amazon 核心服务的掌握程度，<br>
+                同学随时自助 Check，导师高效掌握全局，<br>
+                评估结果可追溯、提升建议智能生成。
             </div>
             <a href="#" id="ctaButton" class="btn-cta">立即使用 →</a>
         </div>
 
-        <section id="pain">
-            <h2>解决痛点</h2>
-            <p class="section-desc">传统 Checklist 评估方式的核心问题</p>
-            <div class="pain-grid">
-                <div class="pain-card"><div class="emoji">⏰</div><h4>减少导师的时间消耗</h4><p>将原本的判断题目正确与否的时间留下来更多放到和同学扩展相关知识上</p></div>
-                <div class="pain-card"><div class="emoji">🎯</div><h4>同学能够更好的自我验证</h4><p>使得同学能够在AI的帮助下更精准更方便的确认自己存在的问题,降低了发现自己问题的时间成本</p></div>
-                <div class="pain-card"><div class="emoji">📊</div><h4>反馈包含提升方向</h4><p>不仅仅是模糊的通过/不通过，同时精确定位薄弱知识点，并给出相关的参考内容</p></div>
-                <div class="pain-card"><div class="emoji">📁</div><h4>历史无法追溯</h4><p>评估结果散落各处，无法追踪新人技术成长轨迹</p></div>
-            </div>
-        </section>
-
-        <section id="features">
-            <h2>核心能力</h2>
-            <p class="section-desc">从评估到归档，全流程智能化</p>
-            <div class="feat-grid">
-                <div class="feat-card"><div class="icon">🤖</div><h4>AI 精准评估</h4><p>大模型逐题对比标准答案，量化打分并指出缺失点</p></div>
-                <div class="feat-card"><div class="icon">📈</div><h4>三级评分体系</h4><p>Excellent / Satisfactory / Fail + 精确百分比</p></div>
-                <div class="feat-card"><div class="icon">🌐</div><h4>多服务覆盖</h4><p>EC2、EBS、S3 等独立题库，自由切换</p></div>
-                <div class="feat-card"><div class="icon">⚡</div><h4>实时流式输出</h4><p>评估结果逐行打字输出，等待过程清晰</p></div>
-                <div class="feat-card"><div class="icon">💾</div><h4>智能存档</h4><p>自动保存，高光标记，历史回看</p></div>
-                <div class="feat-card"><div class="icon">🌏</div><h4>中国区适配</h4><p>自动判定服务在中国区的可用性</p></div>
-            </div>
+        <section id="scenarios">
+            <h2>使用场景</h2>
+            <p class="section-desc">让 CheckList 评估更高效、更自助、更有据可循</p>
+            <div class="benefits-grid">
+                <div class="benefit-card"><div class="emoji">⏰</div><h4>导师高效掌握全局</h4><p>每道题的掌握程度一目了然，导师快速了解整体情况</p></div>
+                <div class="benefit-card"><div class="emoji">🙋</div><h4>同学随时自助 Check</h4><p>同学可随时提交答卷获得即时反馈</p></div>
         </section>
 
         <section id="flow">
-            <h2>使用流程</h2>
+            <h2>使用步骤</h2>
             <p class="section-desc">三步完成评估</p>
             <div class="flow">
-                <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><h4>选择服务 & 提交答卷</h4><p>切换 Amazon 服务，上传文件或在线逐题作答</p></div></div>
-                <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><h4>AI 自动评估</h4><p>大模型逐题对比标准答案，实时流式输出进度</p></div></div>
-                <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><h4>查看报告 & 存档</h4><p>按评级分组查看评估，标记高光，下载报告</p></div></div>
+                <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><h4>选择服务 & 提交答卷</h4><p>切换 Amazon 服务（EC2、EBS、S3 等），上传答卷文件或在线逐题作答</p></div></div>
+                <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><h4>AI 自动评估</h4><p>AI 逐题智能分析，在线输出评估结果，实时展示进度</p></div></div>
+                <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><h4>查看报告 & 存档</h4><p>按评级分组查看结果，收藏心仪报告，下载或回看历史报告</p></div></div>
             </div>
         </section>
 
         <section id="report">
             <h2>报告示例</h2>
-            <p class="section-desc">清晰的分组展示，一目了然</p>
+            <p class="section-desc">功能完整展示</p>
             <div class="report-preview">
-                <div>
-                    <span class="badge badge-e">✅ Excellent 12题</span>
-                    <span class="badge badge-s">⚠️ Satisfactory 8题</span>
-                    <span class="badge badge-f">❌ Fail 5题</span>
-                </div>
-                <div class="report-line">
-                    <strong>Q6: 一个实例可以关联多个 ENI 吗？</strong> — Satisfactory (75%)<br>
-                    <span style="color:#059669;">🌟 正确回答可关联多个 ENI，指出不同实例类型支持数量不同</span><br>
-                    <span style="color:#d97706;">⚠️ 未说明每个 ENI 可独立绑定安全组进行流量控制</span><br>
-                    <span style="color:#d97706;">⚠️ 未提及默认路由表只指向主 ENI，需手动配置路由</span>
+                <div class="report-screenshots">
+                    <div class="report-screenshot">
+                        <img src="assets/feature-navigation.png" alt="服务导航 - 多服务切换与题库选择">
+                        <div class="screenshot-caption">🧭 服务导航 — 多服务自由切换</div>
+                    </div>
+                    <div class="report-screenshot">
+                        <img src="assets/feature-sections.png" alt="报告分区 - 按评级分组展示评估结果">
+                        <div class="screenshot-caption">📊 报告分区 — 按评级分组展示</div>
+                    </div>
+                    <div class="report-screenshot">
+                        <img src="assets/feature-favorites.png" alt="收藏功能 - 高光标记重要报告">
+                        <div class="screenshot-caption">⭐ 收藏功能 — 高光标记重要评估报告</div>
+                    </div>
+                    <div class="report-screenshot">
+                        <img src="assets/feature-history.png" alt="历史记录 - 评估报告归档与回看">
+                        <div class="screenshot-caption">📁 历史记录 — 评估报告归档与回看</div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <section id="scenarios">
-            <h2>适用场景</h2>
-            <p class="section-desc">覆盖技术评估全场景</p>
-            <div class="scenario-grid">
-                <div class="scenario-item"><h4>🎓 新人入职培训</h4><p>自动评估新人对 Amazon 核心服务的掌握程度</p></div>
-                <div class="scenario-item"><h4>👥 团队技能盘点</h4><p>批量评估团队成员水平，为培训计划提供数据支撑</p></div>
-                <div class="scenario-item"><h4>📝 认证备考检测</h4><p>模拟知识检测，量化备考进度</p></div>
-                <div class="scenario-item"><h4>💼 自我问题发现</h4><p>降低学习过程中自我发现问题的时间成本，减少主观判断导致的认知偏差</p></div>
-            </div>
-        </section>
-
-        <div class="footer">Checklist Evaluator — 让技术能力评估更智能、更公正、更高效</div>
+        <div class="footer">Checklist Evaluator — 让评估更智能、更自助、更高效</div>
     </div>
 
     <script>
         // 动态设置立即使用按钮的链接
         document.addEventListener('DOMContentLoaded', function() {
             const ctaButton = document.getElementById('ctaButton');
-            const currentHost = window.location.host; // 获取当前域名和端口
-            const currentProtocol = window.location.protocol; // 获取当前协议 (http: 或 https:)
-            
-            // 构建目标URL，跳转到登录页面
+            const currentHost = window.location.host;
+            const currentProtocol = window.location.protocol;
             const targetUrl = `${currentProtocol}//${currentHost}/login.html`;
-            
             ctaButton.href = targetUrl;
-            
-            // 点击事件处理
             ctaButton.addEventListener('click', function(e) {
-                e.preventDefault(); // 阻止默认链接行为
-                window.location.href = targetUrl; // 跳转到登录页面
+                e.preventDefault();
+                window.location.href = targetUrl;
             });
         });
 
