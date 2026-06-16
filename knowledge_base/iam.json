@@ -1,0 +1,42 @@
+[
+  {
+    "question_id": "Q1",
+    "question": "What is IAM and what are its core components?",
+    "reference_answer": "IAM（Identity and Access Management）是AWS的身份和访问管理服务。\n\n核心组件：\n\n1. 用户（Users）：代表个人或应用程序，具有长期凭证\n\n2. 组（Groups）：用户的集合，用于简化权限管理\n\n3. 角色（Roles）：权限集合，由用户或服务扮演，产生临时凭证\n\n4. 策略（Policies）：定义权限的JSON文档，两种类型：托管策略和内联策略\n\n5. 临时安全凭证：访问密钥、秘密访问密钥和会话令牌\n\n核心功能：\n- 管理用户和应用对AWS资源的访问\n- 实现细粒度权限控制\n- 支持跨账户访问\n- 提供审计和合规报告",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/introduction.html"
+    ]
+  },
+  {
+    "question_id": "Q2",
+    "question": "What is the difference between Users, Groups, and Roles in IAM?",
+    "reference_answer": "用户、组和角色的关键区别：\n\n用户（Users）：\n- 表示个人或应用程序\n- 具有长期凭证（访问密钥）\n- 可以直接附加策略\n- 适合人类用户\n\n组（Groups）：\n- 用户的逻辑集合\n- 不能直接附加凭证\n- 支持向组附加策略\n- 适合权限相同的用户集合\n\n角色（Roles）：\n- 权限集合而非身份\n- 没有关联的长期凭证\n- 可以被用户或服务扮演\n- 产生临时安全凭证\n- 支持跨账户和联合",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/id.html"
+    ]
+  },
+  {
+    "question_id": "Q3",
+    "question": "What is a policy and how to write effective IAM policies?",
+    "reference_answer": "IAM策略是定义权限的JSON文档。\n\n策略结构：\n\n基本元素：\n1. Version：策略语言版本（通常是2012-10-17）\n2. Statement：权限语句数组\n   - Effect：Allow或Deny\n   - Action：具体操作（s3:GetObject）\n   - Resource：操作应用的资源\n   - Condition（可选）：额外条件\n\n编写最佳实践：\n\n1. 最小权限原则：只授予必要的权限\n\n2. 明确资源：指定具体资源而非*\n\n3. 使用条件：基于IP、时间、标签等限制\n\n4. Deny优先级：如果任何Deny匹配，则拒绝",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/access_policies.html"
+    ]
+  },
+  {
+    "question_id": "Q4",
+    "question": "What is cross-account access and how to set it up?",
+    "reference_answer": "跨账户访问允许一个AWS账户中的用户访问另一个账户的资源。\n\n使用场景：\n- 不同部门的账户\n- 开发、测试、生产环境分离\n- 合作伙伴访问\n\n设置步骤：\n\n1. 在目标账户（B）创建角色\n2. 编辑角色的信任关系，允许源账户（A）用户\n3. 在源账户（A）授予sts:AssumeRole权限\n4. 源账户用户扮演目标角色",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/tutorial_cross_account_with_roles.html"
+    ]
+  },
+  {
+    "question_id": "Q5",
+    "question": "How to implement MFA and what are the options?",
+    "reference_answer": "MFA（多因素认证）增强IAM用户的安全性。\n\nMFA设备类型：\n\n1. 虚拟MFA设备：\n   - 使用移动应用（Google Authenticator等）\n   - 基于时间的一次性密码（TOTP）\n   - 成本低，易于部署\n\n2. U2F安全密钥：\n   - 硬件安全密钥\n   - 抗钓鱼\n   - 最安全的选项\n\n启用MFA步骤：\n1. 登录控制台\n2. 选择MFA设备\n3. 配置设备\n4. 验证设置",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/id_credentials_mfa.html"
+    ]
+  }
+]
