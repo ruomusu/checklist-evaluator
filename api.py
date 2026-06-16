@@ -152,8 +152,8 @@ async def _stream_evaluate_answers(
 
     # 生成报告
     generator = ReportGenerator()
-    markdown_report = generator.generate_markdown(report)
-    generator.save_report(report)
+    markdown_report = generator.generate_markdown(report, student_answers)
+    generator.save_report(report, student_answers=student_answers)
 
     # 自动保存到 DynamoDB
     saved_sort_key = ''
@@ -350,6 +350,69 @@ async def get_history_endpoint(trainee_name: str, current_user: dict = Depends(g
     except Exception as e:
         log(f"DynamoDB 查询失败: {e}", stage="ERROR", level=logging.ERROR)
         raise HTTPException(status_code=500, detail=f"查询失败: {e}")
+
+
+# ============================================================
+# 知识库管理 API（仅管理员）
+# ============================================================
+
+class UpdateQuestionRequest(BaseModel):
+    question: str
+    reference_answer: str
+    reference_links: list[str] = []
+
+
+@app.get("/api/admin/knowledge/{service_type}", include_in_schema=False)
+async def get_knowledge_full(service_type: str, current_user: dict = Depends(get_current_user)):
+    """获取指定服务的完整知识库内容（含标准答案，仅管理员）"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可访问")
+    try:
+        items = _load_questions_for_service(service_type)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return JSONResponse(content=[item.model_dump() for item in items])
+
+
+@app.put("/api/admin/knowledge/{service_type}/{question_id}", include_in_schema=False)
+async def update_question(
+    service_type: str,
+    question_id: str,
+    request: UpdateQuestionRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """更新指定题目的内容（仅管理员）"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可访问")
+
+    kb_dir = Path(Config.KNOWLEDGE_BASE_DIR)
+    filepath = kb_dir / f"{service_type.lower()}.json"
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail=f"知识库不存在: {service_type}")
+
+    # 读取现有数据
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # 找到对应题目并更新
+    found = False
+    for item in data:
+        if item["question_id"] == question_id:
+            item["question"] = request.question
+            item["reference_answer"] = request.reference_answer
+            item["reference_links"] = request.reference_links
+            found = True
+            break
+
+    if not found:
+        raise HTTPException(status_code=404, detail=f"题目不存在: {question_id}")
+
+    # 写回文件
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    log(f"管理员 {current_user.get('trainee_name')} 更新了 {service_type}/{question_id}", stage="ADMIN")
+    return JSONResponse(content={"status": "ok", "message": f"题目 {question_id} 已更新"})
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

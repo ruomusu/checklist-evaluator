@@ -216,6 +216,145 @@
             padding: 40px;
             color: #666;
         }
+        
+        /* 题目管理相关样式 */
+        .knowledge-toolbar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .knowledge-toolbar select {
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 200px;
+        }
+        
+        .question-card {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        
+        .question-card:hover {
+            border-color: #0071e3;
+            box-shadow: 0 2px 8px rgba(0,113,227,0.1);
+        }
+        
+        .question-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .question-card-id {
+            font-weight: 600;
+            color: #0071e3;
+            font-size: 14px;
+            white-space: nowrap;
+            margin-right: 12px;
+        }
+        
+        .question-card-text {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #333;
+        }
+        
+        .question-card-actions {
+            margin-left: 12px;
+        }
+        
+        .question-card-answer {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+            max-height: 80px;
+            overflow: hidden;
+            position: relative;
+            white-space: pre-wrap;
+        }
+        
+        .question-card-answer.expanded {
+            max-height: none;
+        }
+        
+        .toggle-answer {
+            color: #0071e3;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 4px;
+            display: inline-block;
+        }
+        
+        .toggle-answer:hover {
+            text-decoration: underline;
+        }
+        
+        /* 编辑表单样式 */
+        .edit-form .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .edit-form label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        
+        .edit-form textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            font-family: inherit;
+        }
+        
+        .edit-form textarea:focus {
+            outline: none;
+            border-color: #0071e3;
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.1);
+        }
+        
+        .btn-primary {
+            background: #0071e3 !important;
+            color: white !important;
+            border-color: #0071e3 !important;
+        }
+        
+        .btn-primary:hover {
+            background: #005bb5 !important;
+        }
+        
+        .btn-edit {
+            padding: 4px 10px;
+            font-size: 12px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-edit:hover {
+            background: #bbdefb;
+        }
     </style>
 </head>
 <body>
@@ -243,6 +382,7 @@
         <div class="tabs">
             <button class="tab active" onclick="showTab('users')">用户列表</button>
             <button class="tab" onclick="showTab('history')">评估记录</button>
+            <button class="tab" onclick="showTab('knowledge')">题目管理</button>
         </div>
         
         <div class="panel active" id="usersPanel">
@@ -275,6 +415,18 @@
                 <tbody id="historyBody"></tbody>
             </table>
         </div>
+
+        <!-- 题目管理面板 -->
+        <div class="panel" id="knowledgePanel">
+            <div class="knowledge-toolbar">
+                <select id="serviceSelect" onchange="loadKnowledge()">
+                    <option value="">-- 请选择服务 --</option>
+                </select>
+                <span id="questionCount" style="margin-left: 12px; color: #666; font-size: 14px;"></span>
+            </div>
+            <div id="knowledgeLoading" class="loading" style="display: none;">加载中...</div>
+            <div id="knowledgeList"></div>
+        </div>
     </div>
 
     <!-- 查看报告弹窗 -->
@@ -288,9 +440,36 @@
         </div>
     </div>
 
+    <!-- 编辑题目弹窗 -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+        <div style="background: white; max-width: 900px; margin: 40px auto; border-radius: 12px; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 20px;">编辑题目 <span id="editQuestionId" style="color: #0071e3;"></span></h2>
+                <button onclick="closeEditModal()" style="padding: 8px 16px; border: none; background: #f5f5f5; border-radius: 6px; cursor: pointer;">关闭</button>
+            </div>
+            <div class="edit-form">
+                <div class="form-group">
+                    <label>题目内容</label>
+                    <textarea id="editQuestion" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>参考答案</label>
+                    <textarea id="editAnswer" rows="12"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>参考链接（每行一个URL）</label>
+                    <textarea id="editLinks" rows="4"></textarea>
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
+                    <button class="btn" onclick="closeEditModal()">取消</button>
+                    <button class="btn btn-primary" onclick="saveQuestion()">保存修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '';
-        const token = localStorage.getItem('token');
         
         // 显示用户信息
         const username = localStorage.getItem('username');
@@ -313,15 +492,23 @@
                 document.querySelector('.tab:nth-child(1)').classList.add('active');
                 document.getElementById('usersPanel').classList.add('active');
                 if (!usersLoaded) loadUsers();
-            } else {
+            } else if (tab === 'history') {
                 document.querySelector('.tab:nth-child(2)').classList.add('active');
                 document.getElementById('historyPanel').classList.add('active');
                 if (!historyLoaded) loadHistory();
+            } else if (tab === 'knowledge') {
+                document.querySelector('.tab:nth-child(3)').classList.add('active');
+                document.getElementById('knowledgePanel').classList.add('active');
+                if (!servicesLoaded) loadServices();
             }
         }
         
         let usersLoaded = false;
         let historyLoaded = false;
+        let servicesLoaded = false;
+        let currentKnowledgeData = [];
+        let currentEditService = '';
+        let currentEditQuestionId = '';
         
         // 加载用户列表
         async function loadUsers() {
@@ -427,6 +614,173 @@
             } catch (error) {
                 alert('加载报告失败: ' + error.message);
             }
+        }
+        
+        // ============================================================
+        // 题目管理
+        // ============================================================
+        
+        // 加载服务列表
+        async function loadServices() {
+            try {
+                const response = await fetch(API_BASE + '/api/services');
+                const services = await response.json();
+                const select = document.getElementById('serviceSelect');
+                select.innerHTML = '<option value="">-- 请选择服务 --</option>';
+                services.forEach(s => {
+                    select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+                servicesLoaded = true;
+            } catch (error) {
+                alert('加载服务列表失败: ' + error.message);
+            }
+        }
+        
+        // 加载题目列表
+        async function loadKnowledge() {
+            const serviceType = document.getElementById('serviceSelect').value;
+            if (!serviceType) {
+                document.getElementById('knowledgeList').innerHTML = '';
+                document.getElementById('questionCount').textContent = '';
+                return;
+            }
+            
+            document.getElementById('knowledgeLoading').style.display = 'block';
+            document.getElementById('knowledgeList').innerHTML = '';
+            
+            try {
+                const response = await fetch(API_BASE + `/api/admin/knowledge/${serviceType}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    alert('权限不足或登录已过期');
+                    return;
+                }
+                
+                currentKnowledgeData = await response.json();
+                currentEditService = serviceType;
+                document.getElementById('questionCount').textContent = `共 ${currentKnowledgeData.length} 题`;
+                
+                renderKnowledgeList();
+            } catch (error) {
+                document.getElementById('knowledgeList').innerHTML = `<div class="loading">加载失败: ${error.message}</div>`;
+            } finally {
+                document.getElementById('knowledgeLoading').style.display = 'none';
+            }
+        }
+        
+        // 渲染题目列表
+        function renderKnowledgeList() {
+            const container = document.getElementById('knowledgeList');
+            container.innerHTML = currentKnowledgeData.map((item, index) => `
+                <div class="question-card">
+                    <div class="question-card-header">
+                        <span class="question-card-id">${item.question_id}</span>
+                        <span class="question-card-text">${escapeHtml(item.question)}</span>
+                        <div class="question-card-actions">
+                            <button class="btn-edit" onclick="editQuestion('${item.question_id}')">✏️ 编辑</button>
+                        </div>
+                    </div>
+                    <div class="question-card-answer" id="answer-${index}">${escapeHtml(item.reference_answer.substring(0, 200))}${item.reference_answer.length > 200 ? '...' : ''}</div>
+                    ${item.reference_answer.length > 200 ? `<span class="toggle-answer" onclick="toggleAnswer(${index})">展开全文</span>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        // 展开/收起答案
+        function toggleAnswer(index) {
+            const el = document.getElementById('answer-' + index);
+            const item = currentKnowledgeData[index];
+            const toggle = el.nextElementSibling;
+            
+            if (el.classList.contains('expanded')) {
+                el.classList.remove('expanded');
+                el.textContent = item.reference_answer.substring(0, 200) + (item.reference_answer.length > 200 ? '...' : '');
+                toggle.textContent = '展开全文';
+            } else {
+                el.classList.add('expanded');
+                el.textContent = item.reference_answer;
+                toggle.textContent = '收起';
+            }
+        }
+        
+        // 打开编辑弹窗
+        function editQuestion(questionId) {
+            const item = currentKnowledgeData.find(q => q.question_id === questionId);
+            if (!item) return;
+            
+            currentEditQuestionId = questionId;
+            document.getElementById('editQuestionId').textContent = questionId;
+            document.getElementById('editQuestion').value = item.question;
+            document.getElementById('editAnswer').value = item.reference_answer;
+            document.getElementById('editLinks').value = (item.reference_links || []).join('\n');
+            document.getElementById('editModal').style.display = 'block';
+        }
+        
+        // 关闭编辑弹窗
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+        
+        // 保存修改
+        async function saveQuestion() {
+            const question = document.getElementById('editQuestion').value.trim();
+            const answer = document.getElementById('editAnswer').value.trim();
+            const linksText = document.getElementById('editLinks').value.trim();
+            const links = linksText ? linksText.split('\n').map(l => l.trim()).filter(l => l) : [];
+            
+            if (!question || !answer) {
+                alert('题目内容和参考答案不能为空');
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_BASE + `/api/admin/knowledge/${currentEditService}/${currentEditQuestionId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        reference_answer: answer,
+                        reference_links: links
+                    })
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    alert('权限不足或登录已过期');
+                    return;
+                }
+                
+                const result = await response.json();
+                if (result.status === 'ok') {
+                    // 更新本地数据
+                    const idx = currentKnowledgeData.findIndex(q => q.question_id === currentEditQuestionId);
+                    if (idx !== -1) {
+                        currentKnowledgeData[idx].question = question;
+                        currentKnowledgeData[idx].reference_answer = answer;
+                        currentKnowledgeData[idx].reference_links = links;
+                    }
+                    renderKnowledgeList();
+                    closeEditModal();
+                    alert('保存成功');
+                } else {
+                    alert('保存失败: ' + (result.detail || '未知错误'));
+                }
+            } catch (error) {
+                alert('保存失败: ' + error.message);
+            }
+        }
+        
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
         
         // 初始加载用户统计

@@ -34,8 +34,8 @@ def load_student_answers(filepath: str, knowledge_items: list[KnowledgeItem]) ->
         content = f.read()
 
     answers = []
-    # 按 ## Qn 或 ## 题目编号 分割
-    pattern = r"##\s*(Q?\d+)\s*\n(.*?)(?=\n##\s*Q?\d+|\Z)"
+    # 按 ## Qn 或 ## 题目编号 分割（支持标题格式如 ## Q1: 题目名称）
+    pattern = r"##\s*(Q?\d+)[^\n]*\n(.*?)(?=\n##\s*Q?\d+|\Z)"
     matches = re.findall(pattern, content, re.DOTALL)
 
     for qid, answer_text in matches:

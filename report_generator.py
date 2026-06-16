@@ -29,8 +29,16 @@ class ReportGenerator:
         }
         return mapping.get(level, "")
 
-    def generate_markdown(self, report: EvaluationReport) -> str:
+    def generate_markdown(self, report: EvaluationReport, student_answers: list = None) -> str:
         """生成按评级分组的 Markdown 报告"""
+        # 构建答案查找字典
+        answers_map = {}
+        if student_answers:
+            for sa in student_answers:
+                qid = sa.question_id if hasattr(sa, 'question_id') else sa.get('question_id', '')
+                text = sa.answer_text if hasattr(sa, 'answer_text') else sa.get('answer_text', '')
+                answers_map[qid] = text
+
         lines = []
 
         lines.append(f"# Checklist 评估报告 — {report.student_name}")
@@ -58,6 +66,12 @@ class ReportGenerator:
                 else:
                     lines.append(f"**{ev.question_id}** — Excellent ({ev.score}%) ✅")
                 lines.append("")
+                # 显示学生作答
+                if ev.question_id in answers_map:
+                    lines.append("**📝 学生作答**")
+                    lines.append("")
+                    lines.append(f"> {answers_map[ev.question_id]}")
+                    lines.append("")
                 if ev.strengths:
                     lines.append("**🌟 答题亮点**")
                     for s in ev.strengths:
@@ -75,7 +89,7 @@ class ReportGenerator:
             lines.append(f"## ⚠️ Satisfactory 提示区（{len(satisfactory_evals)} 题）")
             lines.append("")
             for ev in satisfactory_evals:
-                self._render_question(lines, ev)
+                self._render_question(lines, ev, answers_map)
 
         # ═══ Fail 警示区 ═══
         fail_evals = [e for e in report.question_evaluations if e.mastery_level == MasteryLevel.FAIL]
@@ -83,7 +97,7 @@ class ReportGenerator:
             lines.append(f"## ❌ Fail 警示区（{len(fail_evals)} 题）")
             lines.append("")
             for ev in fail_evals:
-                self._render_question(lines, ev)
+                self._render_question(lines, ev, answers_map)
 
         # ═══ 推荐阅读 ═══
         if report.reading_guide:
@@ -99,14 +113,22 @@ class ReportGenerator:
 
         return "\n".join(lines)
 
-    def _render_question(self, lines: list, ev) -> None:
+    def _render_question(self, lines: list, ev, answers_map: dict = None) -> None:
         """渲染单题详情"""
+        if answers_map is None:
+            answers_map = {}
         emoji = self._level_emoji(ev.mastery_level)
         if ev.question:
             lines.append(f"**{ev.question_id}: {ev.question}** — {ev.mastery_level.value} ({ev.score}%) {emoji}")
         else:
             lines.append(f"**{ev.question_id}** — {ev.mastery_level.value} ({ev.score}%) {emoji}")
         lines.append("")
+        # 显示学生作答
+        if ev.question_id in answers_map:
+            lines.append("**📝 学生作答**")
+            lines.append("")
+            lines.append(f"> {answers_map[ev.question_id]}")
+            lines.append("")
         if ev.strengths:
             lines.append("**🌟 答题亮点**")
             for s in ev.strengths:
@@ -121,13 +143,13 @@ class ReportGenerator:
             lines.append(f"💡 {ev.notes}")
             lines.append("")
 
-    def save_report(self, report: EvaluationReport, filename: str = None) -> str:
+    def save_report(self, report: EvaluationReport, filename: str = None, student_answers: list = None) -> str:
         if not filename:
             timestamp = datetime.now(_BJT).strftime("%Y%m%d_%H%M%S")
             filename = f"evaluation_report_{timestamp}.md"
 
         filepath = os.path.join(self.output_dir, filename)
-        content = self.generate_markdown(report)
+        content = self.generate_markdown(report, student_answers)
 
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(content)

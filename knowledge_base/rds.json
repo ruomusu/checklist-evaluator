@@ -1,70 +1,68 @@
 [
   {
     "question_id": "Q1",
-    "question": "What are the main database engines supported by Amazon RDS?",
-    "reference_answer": "Amazon RDS支持以下数据库引擎：\n\n1. 关系型数据库：\n   - MySQL：开源关系数据库，成本低，性能稳定\n   - MariaDB：MySQL的开源分支，具有更多企业功能\n   - PostgreSQL：功能强大的开源关系数据库，支持JSON、JSONB等扩展类型\n   - Oracle Database：商业数据库，支持企业级应用\n   - SQL Server：Microsoft的商业数据库，与Windows生态集成紧密\n\n2. 其他数据库类型：\n   - Amazon Aurora：AWS原生数据库，与MySQL和PostgreSQL兼容，性能更优\n\n各引擎支持情况：\n- 每个引擎都支持多个版本\n- 可以通过版本升级来获取最新功能和安全补丁\n- 支持自动备份和跨AZ高可用部署",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html"
-    ]
+    "question": "什么是 EBS 优化实例，如何检查哪些 RDS 实例类型支持优化？如何查看最大和基准性能？",
+    "reference_answer": "EBS优化实例说明：\n\n定义：\n- 实例到EBS的专用吞吐量\n- 防止网络拥塞\n- 提高I/O性能\n- 特别是存储密集型操作\n\n优势：\n- 稳定的IOPS\n- 可预测的吞吐量\n- 较低的延迟\n\n检查支持的实例：\n\n1. 控制台方式：\n   - 创建DB实例\n   - 查看实例类型\n   - 检查\"EBS优化\"标签\n\n2. 支持的类型：\n   - db.m5及以上\n   - db.r5及以上\n   - db.t3及以上\n   - db.x1及以上\n\n查看性能指标：\n\n1. 基准性能：\n   - 在保证的吞吐量\n   - 通常为实例大小的3倍\n   - 例：db.t3.large = 3GB/s\n\n2. 最大性能：\n   - EBS优化实例\n   - 可达到更高IOPS\n   - 使用CloudWatch监控\n\n3. 查询方式：\n   - AWS官方文档\n   - RDS数据库实例类\n   - 每个类型有规格表\n\n最佳实践：\n- 生产环境使用EBS优化\n- 根据工作负载选择实例\n- 监控实际使用情况",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
   },
   {
     "question_id": "Q2",
-    "question": "What is the difference between Read Replicas and Multi-AZ deployments in RDS?",
-    "reference_answer": "RDS中Read Replicas和Multi-AZ部署的区别：\n\n1. Multi-AZ部署（高可用性）：\n   - 目的：提高可用性和容错能力\n   - 部署方式：在不同的可用区部署主实例和备用副本\n   - 数据同步：同步复制，备用数据与主数据保持一致\n   - 故障转移：自动转移（通常在1-2分钟内完成）\n   - 访问方式：应用仍使用同一个数据库端点\n   - 性能影响：主实例性能可能下降（由于同步复制的网络延迟）\n   - 备用实例是否可读：不可读（备用实例只用于故障转移）\n\n2. Read Replicas（读扩展）：\n   - 目的：扩展读取能力，减轻主实例负担\n   - 部署方式：可在同一AZ、不同AZ或不同区域创建\n   - 数据同步：异步复制，可能存在延迟\n   - 故障转移：需要手动转移或应用端配置\n   - 访问方式：应用需要连接到Read Replica的独立端点\n   - 性能影响：主实例性能不受影响\n   - 备用实例是否可读：可读（主要用途就是处理读请求）\n   - 成本：需要单独付费\n\n使用场景：\n- Multi-AZ：用于生产环境需要高可用性的关键应用\n- Read Replicas：用于需要扩展读取能力或实现跨地域部署的场景",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_ReadRepl.html"
-    ]
+    "question": "当选择通用 SSD 或预配置 IOPS SSD 时，Amazon RDS 如何通过依据引擎选择和请求的存储量自动跨多个卷进行条纹化来增强性能？",
+    "reference_answer": "RDS存储条纹化机制：\n\n定义：\n- 将数据分布在多个卷\n- 并行读写\n- 提高性能\n\n条纹化方式：\n\n通用SSD（gp2）：\n- 基础性能\n- 根据大小自动扩展\n- 3 IOPS/GB\n- 最高16000 IOPS\n- 无需手动条纹化\n\n预配置IOPS SSD（io1）：\n- 高性能要求\n- IOPS和存储分离配置\n- 支持1:50到1:64的比例\n- 存储大小≥100GB\n\nRDS内部处理：\n- 最大化卷使用\n- 自动分配数据\n- 无需应用参与\n- 透明处理\n\n条纹化配置示例：\n\n1. 创建DB实例：\n   - 选择存储类型\n   - 指定IOPS\n   - 指定存储大小\n\n2. 性能计算：\n   - 总吞吐量 = 卷数 × 单卷吞吐量\n   - 自动优化\n\n引擎差异：\n- MySQL/MariaDB\n- PostgreSQL\n- Oracle\n- SQL Server\n- 条纹化机制相同",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
   },
   {
     "question_id": "Q3",
-    "question": "How do you backup and restore a database in RDS?",
-    "reference_answer": "RDS备份和恢复机制：\n\n自动备份：\n1. 备份保留期：默认7天，可配置为1-35天\n2. 备份内容：包括完整的数据库和事务日志\n3. 备份时间窗口：可指定备份时间窗口（通常在维护窗口期间）\n4. 成本：与备份存储大小相关，每GB有费用\n5. 恢复到时间点（PITR）：可恢复到保留期内的任意时间点\n\n手动备份（快照）：\n1. 创建方式：手动触发或通过自动化脚本创建\n2. 保留期：无限期保留直到手动删除\n3. 成本：需要为快照存储付费\n4. 恢复：可从快照创建新的数据库实例\n\n恢复方式：\n1. 时间点恢复（Point-in-Time Recovery）：\n   - 创建新的数据库实例\n   - 指定恢复到的时间点\n   - 需要保留自动备份\n   - 适合用于误删除恢复\n\n2. 快照恢复：\n   - 从手动快照或自动备份创建新实例\n   - 恢复后获得一个新的数据库实例\n   - 原实例不受影响\n\n3. 跨地域恢复：\n   - 可以在不同区域创建数据库副本\n   - 支持跨区域恢复\n\n最佳实践：\n- 定期创建手动快照用于长期保留\n- 在进行重要操作前创建快照\n- 测试恢复流程以确保备份有效\n- 备份和原实例存储在不同的存储中",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_CreateSnapshot.html",
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_PIT.html"
-    ]
+    "question": "使用默认参数组启动实例后，如何修改数据库参数？",
+    "reference_answer": "修改RDS数据库参数：\n\n步骤1 - 创建自定义参数组：\n- 不能修改默认参数组\n- 创建新参数组\n- 选择相同的数据库引擎版本\n- 复制所有参数设置\n\n步骤2 - 修改参数：\n1. 在控制台修改\n2. 编辑参数值\n3. 保存修改\n\n步骤3 - 关联参数组：\n1. 修改DB实例\n2. 选择新参数组\n3. 应用更改\n\n应用方式：\n\n立即应用：\n- 一些参数立即生效\n- 无需重启\n- 但可能影响性能\n\n需要重启的参数：\n- 大部分参数\n- 需计划维护窗口\n- 导致短暂停机\n\n常见参数修改：\n- max_connections\n- slow_query_log\n- innodb_buffer_pool_size\n- shared_preload_libraries（PostgreSQL）\n\n最佳实践：\n- 在非生产环境测试\n- 注意参数相互影响\n- 记录所有修改\n- 监控性能变化\n- 准备回滚方案",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
   },
   {
     "question_id": "Q4",
-    "question": "What are RDS DB instance classes and how do you choose the right one?",
-    "reference_answer": "RDS数据库实例类型：\n\n实例类型分类：\n1. 标准类（db.t系列）：\n   - 特点：可突增性能，成本低\n   - 适用场景：开发、测试、低流量生产应用\n   - 通常有信用积累机制，可短时间突增到更高性能\n\n2. 内存优化类（db.r系列）：\n   - 特点：高内存相对于CPU，缓存密集型应用\n   - 适用场景：大型数据库、内存中数据处理\n   - 提供最优的内存-CPU比\n\n3. 计算优化类（db.c系列）：\n   - 特点：高CPU相对于内存，计算密集型\n   - 适用场景：CPU密集的数据库操作\n\n4. 存储优化类（db.i系列）：\n   - 特点：高IOPS和存储吞吐量\n   - 适用场景：I/O密集型操作\n\n选择标准：\n1. 工作负载特性：\n   - 分析当前CPU、内存、磁盘I/O的使用情况\n   - 使用CloudWatch监控确定瓶颈\n\n2. 成本考虑：\n   - 权衡成本和性能\n   - 考虑预留实例（RI）获得折扣\n\n3. 可扩展性：\n   - 选择可以升级的实例类型\n   - 避免性能过剩或不足\n\n4. 可用性需求：\n   - 生产环境优先选择支持Multi-AZ的实例\n\n最佳实践：\n- 从较小的实例开始，根据监控数据升级\n- 在非生产环境测试实例类型变更\n- 定期审查和优化实例类型选择",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html"
-    ]
+    "question": "RDS 主用户具有哪些权限，如何重置主用户权限？",
+    "reference_answer": "RDS主用户权限：\n\n主用户权限范围：\n- 创建数据库\n- 创建用户和角色\n- 管理权限\n- 修改参数\n- 执行大多数SQL操作\n\n限制（安全考虑）：\n- 无法修改某些系统参数\n- 无法停止数据库\n- 无法访问binlog\n\n重置主用户密码：\n\n步骤1 - 使用控制台：\n1. 选择数据库实例\n2. 点击修改\n3. 编辑主用户密码\n4. 应用更改（重启可选）\n\n步骤2 - 使用AWS CLI：\n```\naws rds modify-db-instance \\\n  --db-instance-identifier mydb \\\n  --master-user-password newpassword \\\n  --apply-immediately\n```\n\n权限管理：\n\n1. 创建受限用户：\n   - 不使用主用户日常操作\n   - 创建具体权限用户\n   - 主用户仅管理\n\n2. 权限委派：\n   - 使用CREATE USER\n   - GRANT/REVOKE权限\n   - 数据库级别权限\n\n最佳实践：\n- 定期更改密码\n- 不在应用中暴露主用户\n- 使用IAM数据库认证\n- 创建受限用户角色",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
   },
   {
     "question_id": "Q5",
-    "question": "What is RDS encryption and how do you enable it?",
-    "reference_answer": "RDS数据库加密：\n\n加密类型：\n1. 存储加密（At-rest encryption）：\n   - 使用AWS Key Management Service (KMS)加密数据库卷\n   - 加密密钥由AWS管理或由客户管理\n   - 对数据库快照也进行加密\n\n2. 传输加密（In-transit encryption）：\n   - SSL/TLS加密数据库连接\n   - 确保数据在传输中受保护\n   - 支持强制SSL连接\n\n启用存储加密：\n1. 创建数据库时启用：\n   - 在创建数据库实例时选择\"启用加密\"\n   - 选择KMS密钥（AWS托管或客户托管）\n   - 新创建的数据库将被加密\n\n2. 现有数据库加密：\n   - 不能直接在现有数据库上启用加密\n   - 需要创建加密的快照副本：\n     1. 创建现有数据库的快照\n     2. 复制快照并启用加密\n     3. 从加密快照恢复新数据库\n\n启用传输加密：\n1. 使用SSL证书连接\n2. 配置安全组允许特定端口\n3. 数据库端点支持SSL连接参数\n\n性能影响：\n- 存储加密对性能影响很小\n- 传输加密可能增加网络开销\n\n成本：\n- 存储加密：按KMS API调用次数收费\n- 传输加密：无额外成本\n\n最佳实践：\n- 生产环境始终启用加密\n- 使用客户托管的KMS密钥便于密钥轮换\n- 定期验证加密配置\n- 妥善保管KMS密钥",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Overview.Encryption.html"
-    ]
+    "question": "Multi-AZ 部署中故障转移的原因有哪些？",
+    "reference_answer": "Multi-AZ故障转移原因：\n\n自动故障转移场景：\n\n1. 数据库实例故障：\n   - 数据库进程崩溃\n   - 内存耗尽\n   - 磁盘空间满\n\n2. 实例硬件故障：\n   - CPU故障\n   - 内存故障\n   - 磁盘故障\n   - 网络接口故障\n\n3. 网络问题：\n   - 实例无法访问\n   - 网络连接中断\n   - 安全组配置错误\n\n4. 存储故障：\n   - EBS卷故障\n   - 存储性能严重下降\n   - I/O操作超时\n\n5. 操作系统故障：\n   - 内核崩溃\n   - 操作系统挂起\n\n6. 主动故障转移：\n   - 维护操作\n   - 实例重启\n   - 参数组修改\n\n故障转移过程：\n\n1. 检测故障（通常< 1分钟）\n2. 故障转移开始\n3. DNS更新（通常< 2分钟）\n4. 应用重连\n\n工作原理：\n- 备用实例激活\n- 数据库文件系统检查\n- 事务日志重放\n- 服务恢复\n\n影响：\n- 短暂连接中断\n- 事务回滚\n- 应用需要重连逻辑",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
   },
   {
     "question_id": "Q6",
-    "question": "What are RDS maintenance windows and how do they work?",
-    "reference_answer": "RDS维护时间窗口：\n\n定义：\n- AWS会在此期间对RDS实例进行维护操作\n- 维护可能导致数据库实例暂时不可用\n\n维护操作包括：\n1. 数据库引擎版本升级\n2. 安全补丁应用\n3. 操作系统补丁\n4. 硬件维护\n5. 数据库实例维护\n\n维护时间窗口规格：\n1. 时间段：长度通常为1小时\n2. 频率：通常每周进行一次\n3. 时区：可指定首选维护时间\n4. 可配置：用户可选择首选的维护窗口\n\n数据库停机影响：\n1. Multi-AZ部署：\n   - 故障转移到备用实例\n   - 停机时间通常为1-2分钟\n   - 应用连接字符串不变（RDS端点保持不变）\n\n2. 单AZ部署：\n   - 直接停机进行维护\n   - 停机时间几分钟到几小时（取决于维护类型）\n   - 应用连接中断\n\n最佳实践：\n1. 选择流量最低的时间段作为维护窗口\n2. 生产环境使用Multi-AZ以减少停机影响\n3. 提前进行版本升级测试\n4. 配置应用自动重连机制\n5. 在非生产环境提前测试升级\n\n延迟维护：\n- 某些情况下可以延迟维护操作\n- 但安全相关的补丁通常无法延迟",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Maintenance.html"
-    ]
+    "question": "如何查看数据库实例的事件？",
+    "reference_answer": "查看RDS数据库事件：\n\n方法1 - 控制台查看：\n1. 打开RDS控制台\n2. 选择实例\n3. 点击\"事件\"标签\n4. 查看事件列表\n\n事件类型包括：\n- 实例启动/停止\n- 参数修改\n- 备份完成\n- 故障转移\n- 维护活动\n- 错误和警告\n\n事件详情：\n- 时间戳\n- 事件类型\n- 描述\n- 严重程度\n\n方法2 - 使用CLI：\n```\naws rds describe-events \\\n  --source-identifier mydb \\\n  --source-type db-instance\n```\n\n方法3 - 使用事件订阅：\n1. 创建SNS主题\n2. 订阅事件\n3. 接收通知\n\n事件保留期：\n- 事件保留14天\n- 之后自动删除\n- CloudTrail记录更长\n\n事件分类：\n- 可用性事件\n- 维护事件\n- 安全事件\n- 性能事件\n\n最佳实践：\n- 定期查看事件\n- 设置事件订阅\n- 分析趋势\n- 记录重要事件",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
   },
   {
     "question_id": "Q7",
-    "question": "What is the difference between RDS and DynamoDB?",
-    "reference_answer": "RDS和DynamoDB的区别：\n\n1. 数据库类型：\n   - RDS：关系型数据库（RDBMS），支持SQL查询\n   - DynamoDB：NoSQL键值数据库\n\n2. 数据模型：\n   - RDS：表、行、列的结构化数据\n   - DynamoDB：键值对、灵活的数据结构\n\n3. 查询能力：\n   - RDS：支持复杂SQL查询、JOIN、聚合函数\n   - DynamoDB：基于键的查询，查询能力有限\n\n4. 可扩展性：\n   - RDS：垂直扩展（升级实例类型）和读副本水平扩展\n   - DynamoDB：完全无服务器，自动水平扩展\n\n5. 性能：\n   - RDS：毫秒级延迟，适合复杂查询\n   - DynamoDB：微秒级延迟，适合简单查询\n\n6. 成本模型：\n   - RDS：按实例大小和存储计费，固定成本\n   - DynamoDB：按读写容量或按需计费，使用量计费\n\n7. 维护：\n   - RDS：AWS完全管理备份、补丁、故障转移\n   - DynamoDB：完全无服务器，无需维护\n\n8. 使用场景：\n   - RDS：复杂业务逻辑、需要事务支持、复杂查询\n   - DynamoDB：高并发、简单键值查询、低延迟要求\n\n9. ACID特性：\n   - RDS：完全支持ACID事务\n   - DynamoDB：有限的事务支持\n\n10. 备份和恢复：\n    - RDS：自动备份、时间点恢复、快照\n    - DynamoDB：按需备份、时间点恢复（需配置）",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Welcome.html",
-      "https://docs.aws.amazon.com/zh_cn/amazondynamodb/latest/developerguide/Introduction.html"
-    ]
+    "question": "启用存储自动扩展时，在什么条件下会触发自动扩展？扩展大小是多少？有什么限制吗？",
+    "reference_answer": "RDS存储自动扩展：\n\n触发条件：\n\n1. 存储使用阈值：\n   - 可用存储 < 10%\n   - 或接近容量\n   - 可自定义阈值\n\n2. 检查频率：\n   - 每5分钟检查一次\n   - 基于实际使用\n\n3. 冷却期：\n   - 扩展后6小时\n   - 防止频繁扩展\n\n扩展大小：\n\n扩展增量：\n- 基于当前存储大小\n- 通常增加5GB\n- 最多增加10GB\n- 最少增加1GB\n\n扩展频率：\n- 最多24小时一次（建议）\n- 冷却期后可再扩展\n\n限制条件：\n\n1. 最大存储大小：\n   - MySQL/MariaDB: 65536 GB\n   - PostgreSQL: 65536 GB\n   - Oracle: 65536 GB\n   - SQL Server: 65536 GB\n\n2. 其他限制：\n   - 不能缩小存储\n   - 达到最大后停止扩展\n   - 需要监控成本\n\n配置方式：\n\n1. 启用自动扩展：\n   - 创建或修改实例\n   - 启用\"启用自动扩展\"\n   - 设置最大存储\n\n2. 监控：\n   - CloudWatch指标\n   - 存储使用趋势\n   - 设置告警\n\n成本影响：\n- 自动增加存储成本\n- 按GB计费\n- 不能回滚\n\n最佳实践：\n- 设置合理的最大存储\n- 监控使用增长\n- 优化应用减少存储\n- 定期清理数据",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
   },
   {
     "question_id": "Q8",
-    "question": "How do you monitor RDS database performance?",
-    "reference_answer": "RDS性能监控：\n\n1. CloudWatch监控指标：\n   - CPU利用率：监控数据库的CPU使用情况\n   - 数据库连接数：监控活跃连接数\n   - 磁盘I/O读写速率：监控存储I/O性能\n   - 存储空间：监控数据库存储使用情况\n   - 网络吞吐量：监控网络传输速率\n   - 内存使用：监控内存缓冲池使用\n   - 事务日志：监控事务日志生成速率\n\n2. RDS Enhanced Monitoring：\n   - 提供更详细的操作系统级别的指标\n   - 可配置监控粒度（1秒到60秒）\n   - 需要启用IAM角色权限\n\n3. Performance Insights：\n   - 可视化数据库工作负载\n   - 识别性能瓶颈\n   - 分析数据库活动\n   - 按等待事件分类性能问题\n\n4. 数据库日志：\n   - 错误日志：捕获数据库错误和警告\n   - 慢查询日志：记录执行缓慢的查询\n   - 审计日志：记录数据库活动（部分引擎支持）\n   - 事务日志：用于恢复和复制\n\n5. CloudWatch告警：\n   - 为关键指标设置告警阈值\n   - 支持多种通知方式（SNS、Lambda等）\n   - 自动扩展触发器\n\n常见监控指标阈值：\n- CPU利用率 > 80%：可能需要升级实例\n- 磁盘使用率 > 85%：可能需要扩展存储\n- 数据库连接数接近最大值：可能需要优化连接池\n- IOPS利用率高：考虑升级到更高性能的实例\n\n最佳实践：\n- 建立性能基准\n- 定期查看历史性能数据\n- 针对关键指标设置告警\n- 使用Performance Insights找出性能瓶颈\n- 定期优化慢查询",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/MonitoringOverview.html",
-      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_PerfInsights.html"
-    ]
+    "question": "修改数据库实例时，如何确定修改是否会导致中断或性能影响？",
+    "reference_answer": "确定RDS修改的影响：\n\n修改类型分类：\n\n无停机修改（无中断）：\n- 部分参数修改\n- 某些标签更改\n- 某些安全组修改\n- 修改备份保留期\n- 立即应用\n\n需要停机的修改：\n- 数据库引擎升级\n- 实例类型更改\n- 存储类型更改\n- 多AZ启用/禁用\n- 某些参数修改\n- 计划维护窗口\n\n性能影响的修改：\n- 参数修改\n- 实例大小减小\n- 网络变更\n\n查询修改影响的方法：\n\n1. 控制台预览：\n   - 在修改对话框\n   - \"应用方式\"选项\n   - 显示是否立即或需要重启\n\n2. 使用CLI查看：\n```\naws rds describe-db-instances \\\n  --db-instance-identifier mydb\n```\n\n3. 查看文档：\n   - 官方参数参考\n   - 标记需要重启的参数\n   - 标记立即生效的参数\n\n常见修改影响列表：\n\n立即生效：\n- 备份保留期\n- 备份窗口\n- 维护窗口\n- 日志导出\n\n需要重启：\n- max_connections\n- character_set_server\n- innodb_buffer_pool_size\n- shared_preload_libraries\n\n需要停机（长期）：\n- 实例类型升级\n- 多AZ启用\n- 存储扩展（部分情况）\n\n风险最小化：\n\n1. 在非生产环境测试\n2. 选择低峰期应用\n3. 准备回滚计划\n4. 配置应用重连\n5. 监控修改过程\n6. 有备份\n\n计划策略：\n- 小修改：立即应用\n- 大修改：计划窗口\n- 关键业务：避免营业时间",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
+  },
+  {
+    "question_id": "Q9",
+    "question": "如何将未加密的数据库实例修改为加密的数据库实例？",
+    "reference_answer": "RDS加密迁移：\n\n直接加密：\n- 不支持原地加密\n- 无法直接启用加密\n- 需要迁移方法\n\n迁移步骤（最常见方法）：\n\n步骤1 - 创建快照：\n1. 对未加密实例创建快照\n2. 等待快照完成\n3. 记录快照ID\n\n步骤2 - 复制快照并加密：\n```\naws rds copy-db-snapshot \\\n  --source-db-snapshot-identifier original-snapshot \\\n  --target-db-snapshot-identifier encrypted-snapshot \\\n  --kms-key-id arn:aws:kms:region:account:key/id\n```\n\n步骤3 - 从加密快照恢复：\n1. 选择加密的快照\n2. 恢复数据库\n3. 新实例使用KMS加密\n4. 等待恢复完成\n\n步骤4 - 验证和切换：\n1. 验证新实例数据完整\n2. 更新应用连接字符串\n3. 测试连接\n4. 删除旧实例\n\n加密配置：\n\n选择KMS密钥：\n- AWS管理密钥\n- 客户管理密钥\n- 推荐使用客户管理\n\n创建KMS密钥：\n1. 打开KMS控制台\n2. 创建客户托管密钥\n3. 配置密钥策略\n4. 记录密钥ARN\n\n替代方法 - 使用DMS：\n\n1. AWS Database Migration Service\n2. 支持在线迁移\n3. 最小停机\n4. 适合大型数据库\n\n时间考虑：\n\n- 快照时间：依赖数据大小\n- 复制时间：通常较快\n- 恢复时间：依赖数据大小\n- 总时间：可能数小时\n\n最佳实践：\n- 备份原实例\n- 在非生产环境测试\n- 计划停机窗口\n- 监控恢复过程\n- 验证数据完整性\n- 保留原快照备份",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
+  },
+  {
+    "question_id": "Q10",
+    "question": "RDS 实例的 CloudWatch 监控有哪些可用指标，如何使用增强监控获取信息？",
+    "reference_answer": "RDS CloudWatch监控指标：\n\n标准CloudWatch指标：\n\n1. CPU相关：\n   - CPUUtilization: CPU使用百分比\n\n2. 内存相关：\n   - DatabaseConnections: 当前连接数\n   - DatabaseConnections: 活跃连接\n\n3. 存储相关：\n   - FreeStorageSpace: 可用存储空间\n   - SwapUsage: 交换内存使用\n\n4. I/O相关：\n   - ReadIOPS: 读IOPS\n   - WriteIOPS: 写IOPS\n   - ReadLatency: 读延迟\n   - WriteLatency: 写延迟\n   - ReadThroughput: 读吞吐量\n   - WriteThroughput: 写吞吐量\n\n5. 网络相关：\n   - NetworkReceiveThroughput: 接收吞吐\n   - NetworkTransmitThroughput: 发送吞吐\n\n6. 二进制日志：\n   - BinLogDiskUsage: 二进制日志大小\n\n增强监控（Enhanced Monitoring）：\n\n定义：\n- 更细粒度的操作系统指标\n- 实时性能数据\n- 显示进程级别信息\n\n启用增强监控：\n\n步骤1 - 创建IAM角色：\n- 角色名：rds-monitoring-role\n- 权限：AmazonRDSEnhancedMonitoringRole\n\n步骤2 - 启用增强监控：\n1. 修改DB实例\n2. 启用\"启用增强监控\"\n3. 选择IAM角色\n4. 设置监控粒度（1-60秒）\n\n增强监控指标：\n\n进程信息：\n- 每个进程的CPU\n- 每个进程的内存\n- 进程名称\n- I/O操作\n\n系统信息：\n- 系统负载\n- 文件系统活动\n- 磁盘队列深度\n- 网络统计\n\n数据库特定：\n- InnoDB缓冲池使用\n- InnoDB日志磁盘I/O\n- REDO日志活动\n\n查看增强监控数据：\n\n1. 控制台查看：\n   - Performance Insights\n   - Enhanced Monitoring选项卡\n\n2. CloudWatch Logs查看：\n   - 存储在CloudWatch中\n   - 可配置日志组\n\n3. API查询：\n```\naws pi describe-dimension-keys \\\n  --service-type RDS \\\n  --identifier dbi-xxxxx \\\n  --start-time timestamp\n```\n\nPerformance Insights：\n\n额外功能：\n- 数据库工作负载可视化\n- 等待事件分析\n- 性能问题诊断\n- 自动处理检测\n\n告警配置：\n\n关键指标告警：\n- CPU > 80%\n- 存储 > 85%\n- 连接数接近最大\n- IOPS使用率高\n\n最佳实践：\n- 启用增强监控\n- 配置关键告警\n- 建立性能基准\n- 定期分析趋势\n- 使用Performance Insights\n- 调查性能问题",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
+  },
+  {
+    "question_id": "Q11",
+    "question": "读副本延迟的原因有哪些？",
+    "reference_answer": "读副本延迟原因分析：\n\n网络延迟：\n- 跨AZ延迟\n- 跨区域延迟\n- 网络带宽限制\n- 包丢失或重传\n\n主实例因素：\n\n1. 高写入负载：\n   - 大量DML操作\n   - 事务日志生成快\n   - 副本跟不上\n\n2. 大型事务：\n   - 长事务执行\n   - 日志应用缓慢\n   - 锁竞争\n\n3. 参数设置：\n   - 不合理的batch size\n   - 日志级别过高\n   - 同步设置不当\n\n副本实例因素：\n\n1. 计算能力不足：\n   - 实例类型过小\n   - CPU不足\n   - 内存不足\n\n2. I/O性能：\n   - 磁盘IOPS限制\n   - 磁盘吞吐不足\n   - 磁盘故障\n\n3. 数据库配置：\n   - SQL线程单线程\n   - 复制过滤\n   - 应用缓慢\n\n数据库操作：\n\n1. 锁等待：\n   - 表锁\n   - 行锁\n   - 死锁\n\n2. 复杂查询：\n   - 在副本执行\n   - 阻塞复制\n\n3. 资源争用：\n   - CPU竞争\n   - 内存竞争\n   - I/O竞争\n\n监控延迟：\n\n1. 检查复制延迟：\n```\nSHOW SLAVE STATUS\\G\n# Seconds_Behind_Master 字段\n```\n\n2. CloudWatch指标：\n   - ReplicationLag\n   - AuroraBinlogReplicaLag\n\n3. 性能洞察：\n   - 等待事件\n   - 进程活动\n\n减少延迟的方法：\n\n1. 升级副本实例：\n   - 增加CPU\n   - 增加内存\n   - 更好的存储\n\n2. 优化主实例：\n   - 减少写入\n   - 优化事务\n   - 调整参数\n\n3. 架构优化：\n   - 多线程复制（MySQL 5.7+）\n   - 并行复制\n   - 减少复制过滤\n\n4. 应用层优化：\n   - 批量操作\n   - 减少小事务\n   - 合并操作\n\n5. 网络优化：\n   - 同AZ副本\n   - 高性能网络\n   - 减少拥塞\n\n最佳实践：\n- 定期监控延迟\n- 匹配副本和主实例规模\n- 规划容量\n- 设置延迟告警\n- 在应用中处理最终一致性",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/"]
   }
 ]

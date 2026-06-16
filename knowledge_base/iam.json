@@ -1,42 +1,80 @@
 [
   {
     "question_id": "Q1",
-    "question": "What is IAM and what are its core components?",
-    "reference_answer": "IAM（Identity and Access Management）是AWS的身份和访问管理服务。\n\n核心组件：\n\n1. 用户（Users）：代表个人或应用程序，具有长期凭证\n\n2. 组（Groups）：用户的集合，用于简化权限管理\n\n3. 角色（Roles）：权限集合，由用户或服务扮演，产生临时凭证\n\n4. 策略（Policies）：定义权限的JSON文档，两种类型：托管策略和内联策略\n\n5. 临时安全凭证：访问密钥、秘密访问密钥和会话令牌\n\n核心功能：\n- 管理用户和应用对AWS资源的访问\n- 实现细粒度权限控制\n- 支持跨账户访问\n- 提供审计和合规报告",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/introduction.html"
-    ]
+    "question": "IAM 用户、IAM 角色和 IAM 组的定义和区别",
+    "reference_answer": "IAM核心身份类型：\n\n1. IAM用户（Users）：\n   - 代表个人或应用程序\n   - 具有长期凭证（访问密钥）\n   - 与特定人员一一对应\n   - 有关联的权限策略\n   - 可单独管理\n\n2. IAM组（Groups）：\n   - 用户的集合\n   - 不是身份，只是容器\n   - 不能附加凭证\n   - 简化权限管理\n   - 可添加多个用户\n\n3. IAM角色（Roles）：\n   - 权限集合而非身份\n   - 没有长期凭证\n   - 可被用户或服务扮演\n   - 产生临时安全凭证\n   - 支持跨账户访问",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
   },
   {
     "question_id": "Q2",
-    "question": "What is the difference between Users, Groups, and Roles in IAM?",
-    "reference_answer": "用户、组和角色的关键区别：\n\n用户（Users）：\n- 表示个人或应用程序\n- 具有长期凭证（访问密钥）\n- 可以直接附加策略\n- 适合人类用户\n\n组（Groups）：\n- 用户的逻辑集合\n- 不能直接附加凭证\n- 支持向组附加策略\n- 适合权限相同的用户集合\n\n角色（Roles）：\n- 权限集合而非身份\n- 没有关联的长期凭证\n- 可以被用户或服务扮演\n- 产生临时安全凭证\n- 支持跨账户和联合",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/id.html"
-    ]
+    "question": "基于用户和基于资源的策略定义和区别",
+    "reference_answer": "IAM策略类型：\n\n基于用户的策略（User-based Policy）：\n- 附加到用户、组或角色\n- 定义主体可以做什么\n- 由Principal进行操作\n- 例：用户能读S3对象\n- 检查流程：检查用户是否有权\n\n基于资源的策略（Resource-based Policy）：\n- 附加到资源（S3桶、SNS主题等）\n- 定义谁可以访问资源\n- 在资源端设置权限\n- 例：允许某个账户访问S3桶\n- 检查流程：检查资源是否允许\n\n示例对比：\n- 用户策略：用户Alice有GetObject权限\n- 资源策略：S3桶允许来自账户B的访问\n\n跨账户访问场景：\n- 需要两边都配置\n- 用户策略允许扮演角色\n- 资源策略允许访问",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
   },
   {
     "question_id": "Q3",
-    "question": "What is a policy and how to write effective IAM policies?",
-    "reference_answer": "IAM策略是定义权限的JSON文档。\n\n策略结构：\n\n基本元素：\n1. Version：策略语言版本（通常是2012-10-17）\n2. Statement：权限语句数组\n   - Effect：Allow或Deny\n   - Action：具体操作（s3:GetObject）\n   - Resource：操作应用的资源\n   - Condition（可选）：额外条件\n\n编写最佳实践：\n\n1. 最小权限原则：只授予必要的权限\n\n2. 明确资源：指定具体资源而非*\n\n3. 使用条件：基于IP、时间、标签等限制\n\n4. Deny优先级：如果任何Deny匹配，则拒绝",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/access_policies.html"
-    ]
+    "question": "内联策略和托管策略的定义和区别",
+    "reference_answer": "IAM策略管理方式：\n\n内联策略（Inline Policy）：\n- 直接嵌入到单个用户/组/角色\n- 一对一的关系\n- 创建：每次都要定义\n- 删除：删除主体则自动删除\n- 版本控制：不支持\n- 重用：不能在多个主体间重用\n- 管理：分散管理\n- 大小限制：单个策略10KB\n\n托管策略（Managed Policy）：\n- 独立的策略对象\n- 一对多的关系\n- 创建：一次定义，多次使用\n- 删除：可单独管理生命周期\n- 版本控制：支持版本管理\n- 重用：可附加到多个主体\n- 管理：集中管理\n- 大小限制：10KB\n\n托管策略类型：\n\nAWS托管策略：\n- AWS创建和维护\n- 自动更新\n- 预定义权限\n\n客户托管策略：\n- 用户创建\n- 完全控制\n- 需自己维护\n\n最佳实践：\n- 一般使用托管策略\n- 特殊情况使用内联策略\n- 避免过度使用内联",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
   },
   {
     "question_id": "Q4",
-    "question": "What is cross-account access and how to set it up?",
-    "reference_answer": "跨账户访问允许一个AWS账户中的用户访问另一个账户的资源。\n\n使用场景：\n- 不同部门的账户\n- 开发、测试、生产环境分离\n- 合作伙伴访问\n\n设置步骤：\n\n1. 在目标账户（B）创建角色\n2. 编辑角色的信任关系，允许源账户（A）用户\n3. 在源账户（A）授予sts:AssumeRole权限\n4. 源账户用户扮演目标角色",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/tutorial_cross_account_with_roles.html"
-    ]
+    "question": "如何配置对 S3 存储桶权限的跨账户访问",
+    "reference_answer": "跨账户S3访问配置：\n\n步骤1 - 源账户配置：\n- 创建或编辑IAM角色\n- 添加S3权限策略\n- 配置信任关系：允许源账户用户\n\n步骤2 - 目标账户配置：\n- 编辑S3桶策略\n- 允许源账户用户访问\n- 指定操作（GetObject、PutObject等）\n\n示例配置：\n1. 账户B创建角色CrossAccountRole\n2. 信任关系：允许账户A的用户\n3. 权限：读写S3数据\n4. 账户B的S3桶策略：允许该角色\n\n验证方法：\n- 账户A用户扮演角色\n- 测试S3访问\n- 查看CloudTrail日志",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
   },
   {
     "question_id": "Q5",
-    "question": "How to implement MFA and what are the options?",
-    "reference_answer": "MFA（多因素认证）增强IAM用户的安全性。\n\nMFA设备类型：\n\n1. 虚拟MFA设备：\n   - 使用移动应用（Google Authenticator等）\n   - 基于时间的一次性密码（TOTP）\n   - 成本低，易于部署\n\n2. U2F安全密钥：\n   - 硬件安全密钥\n   - 抗钓鱼\n   - 最安全的选项\n\n启用MFA步骤：\n1. 登录控制台\n2. 选择MFA设备\n3. 配置设备\n4. 验证设置",
-    "reference_links": [
-      "https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/id_credentials_mfa.html"
-    ]
+    "question": "IAM 策略的元素有哪些？请解释每一个",
+    "reference_answer": "IAM策略元素：\n\n1. Version（版本）：\n   - 策略语言版本\n   - 典型值：2012-10-17\n   - 定义语法规则\n\n2. Statement（语句）：\n   - 权限规则的数组\n   - 包含多个元素\n   - 可多条并存\n\n3. Effect（效果）：\n   - Allow 或 Deny\n   - 定义是允许还是拒绝\n   - Deny优先级最高\n\n4. Principal（主体）：\n   - 谁可以执行操作\n   - 用户、角色或服务\n   - 资源策略中必需\n   - 用户策略中省略\n\n5. Action（操作）：\n   - 具体的AWS操作\n   - 格式：service:action\n   - 例：s3:GetObject\n   - 支持通配符\n\n6. Resource（资源）：\n   - 操作应用的资源\n   - ARN格式\n   - 例：arn:aws:s3:::bucket/*\n   - 用户策略中必需\n\n7. Condition（条件）：\n   - 可选的额外条件\n   - 基于键值对\n   - 例：时间、IP地址、标签\n   - 支持条件运算符",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
+  },
+  {
+    "question_id": "Q6",
+    "question": "如何排查访问被拒绝错误（例如跨账户S3访问的访问被拒绝）？请详细列出所有排查部分",
+    "reference_answer": "Access Deny排查步骤：\n\n第1步 - 验证主体身份：\n- 确认用户/角色身份\n- 检查是否使用正确的凭证\n- 验证角色被正确扮演\n\n第2步 - 检查用户策略：\n- 验证用户有权执行操作\n- 检查Action是否正确\n- 检查Resource是否包含目标资源\n- 查看Effect是Allow还是Deny\n\n第3步 - 检查资源策略：\n- 查看S3桶策略\n- 验证Principal匹配\n- 检查Action允许\n- 检查条件是否满足\n\n第4步 - 检查信任关系：\n- 跨账户场景下检查\n- 验证Service Trust Policy\n- 确认Principal正确\n\n第5步 - 检查Deny策略：\n- 搜索所有Deny规则\n- 显式Deny优先级最高\n- 检查组织策略（SCP）\n- 检查权限边界\n\n第6步 - 检查条件：\n- 检查IP限制\n- 检查时间条件\n- 检查标签条件\n- 检查MFA要求\n\n第7步 - 分析日志：\n- 查看CloudTrail\n- 搜索AccessDenied事件\n- 查看errorCode字段\n- 分析userAgent\n\n排查工具：\n- IAM Policy Simulator\n- CloudTrail\n- Access Analyzer\n\n常见原因：\n- 权限不足\n- Resource不匹配\n- Principal配置错误\n- Deny规则冲突\n- 跨账户信任配置错误",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
+  },
+  {
+    "question_id": "Q7",
+    "question": "什么是 MFA？它有什么作用？",
+    "reference_answer": "MFA（多因素认证）：\n\n定义：\n- 需要多个验证方式\n- 第一因素：密码\n- 第二因素：设备认证\n- 提高账户安全性\n\n作用：\n\n1. 防止未授权访问：\n   - 即使密码被盗\n   - 也无法登录\n   - 需要物理设备\n\n2. 保护敏感操作：\n   - 需要额外验证\n   - 例如删除资源\n   - 提高安全级别\n\n3. 审计合规：\n   - 满足安全标准\n   - PCI-DSS要求\n   - SOC 2合规\n\nMFA类型：\n\n1. 虚拟MFA设备：\n   - Google Authenticator\n   - 基于时间OTP\n\n2. 硬件MFA设备：\n   - U2F安全密钥\n   - 抗钓鱼\n\n启用MFA：\n- 在IAM控制台\n- 选择MFA设备\n- 配置并验证\n- 保存恢复代码",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
+  },
+  {
+    "question_id": "Q8",
+    "question": "如何在 CLI 中使用 IAM 角色的 STS 临时凭证？",
+    "reference_answer": "STS临时凭证在CLI中的使用：\n\n步骤1 - 获取临时凭证：\n```\naws sts assume-role \\\n  --role-arn arn:aws:iam::ACCOUNT:role/ROLE_NAME \\\n  --role-session-name session-name\n```\n\n步骤2 - 提取凭证：\n- AccessKeyId\n- SecretAccessKey\n- SessionToken\n- Expiration\n\n步骤3 - 配置环境变量：\n```\nexport AWS_ACCESS_KEY_ID=...\nexport AWS_SECRET_ACCESS_KEY=...\nexport AWS_SESSION_TOKEN=...\n```\n\n步骤4 - 执行命令：\n```\naws s3 ls  # 使用临时凭证\n```\n\n配置文件方式：\n- 编辑~/.aws/credentials\n- 添加临时凭证\n- 在命令中指定profile\n\n有效期：\n- 默认1小时\n- 最长8小时（取决于配置）\n- 过期后需重新获取",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
+  },
+  {
+    "question_id": "Q9",
+    "question": "如果 CLI 客户端不位于 Amazon 云技术 EC2 上，如何使用 IAM 角色的 STS 临时凭证？",
+    "reference_answer": "非EC2环境使用STS临时凭证：\n\n前提条件：\n- 有IAM用户或长期凭证\n- 该用户有权扮演目标角色\n- 目标角色信任该用户\n\n步骤1 - 配置AWS凭证：\n- 配置~/aws/credentials\n- 使用IAM用户长期凭证\n- 或使用Environment Variables\n\n步骤2 - 假设角色获取临时凭证：\n```\naws sts assume-role \\\n  --role-arn arn:aws:iam::TARGET_ACCOUNT:role/ROLE \\\n  --role-session-name mysession\n```\n\n步骤3 - 使用返回的临时凭证：\n- 设置环境变量\n- 或更新credentials文件\n- 执行AWS命令\n\n自动化脚本示例：\n1. 存储IAM用户凭证\n2. 调用assume-role\n3. 解析返回的临时凭证\n4. 设置环境变量\n5. 执行操作\n\n跨账户场景：\n- 源账户：有IAM用户\n- 目标账户：有可扮演角色\n- 角色信任源账户",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
+  },
+  {
+    "question_id": "Q10",
+    "question": "如何找到服务支持的资源格式（例如 Glue）以及操作和特定资源类型支持的条件？",
+    "reference_answer": "查找IAM资源和条件信息：\n\n方法1 - AWS官方文档：\n- 服务授权参考\n- URL：docs.aws.amazon.com\n- 搜索：Service Authorization Reference\n- 包含所有操作和资源\n\n方法2 - IAM文档页面：\n- 每个服务有权限参考\n- 列出所有Action\n- 显示Resource格式\n- 列出Condition键\n\nGlue示例：\n资源类型（Resource）：\n- arn:aws:glue:region:account:catalog\n- arn:aws:glue:region:account:database/name\n- arn:aws:glue:region:account:table/db/table\n\n操作（Action）：\n- glue:CreateDatabase\n- glue:GetDatabase\n- glue:CreateTable\n\n条件键（Condition Keys）：\n- glue:CatalogId\n- glue:DatabaseName\n- glue:TableName\n- aws:RequestedRegion\n\n方法3 - AWS CLI查询：\n```\naws iam get-context-keys-for-principal-policy \\\n  --policy-source-arn arn:...\n```\n\n方法4 - IAM Policy Simulator：\n- 在控制台中测试\n- 验证权限\n- 查看具体错误\n\n最佳实践：\n- 书签官方文档\n- 定期检查更新\n- 使用Policy Simulator验证\n- 参考示例策略",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
+  },
+  {
+    "question_id": "Q11",
+    "question": "如何建议一个使用 IAM 角色的客户，该角色已附加 10 个托管策略，现在需要添加另外 10 个 Amazon 托管策略？如果需要添加额外 30 个 Amazon 托管策略怎么办？",
+    "reference_answer": "IAM角色策略限制和建议：\n\n限制信息：\n- 每个IAM主体最多10个托管策略\n- 这是硬限制\n- 无法提高\n\n当前场景（已有10个）：\n\n添加10个的方案：\n1. 不建议方案：\n   - 无法直接添加\n   - 已经达到限制\n\n2. 推荐方案：\n   - 创建客户托管策略\n   - 合并权限到新策略\n   - 替换一些AWS托管策略\n   - 使用权限边界\n\n3. 架构优化：\n   - 审计现有策略\n   - 移除不需要的权限\n   - 合并相同功能\n   - 减少冗余\n\n添加额外30个的方案：\n\n1. 权限整合：\n   - 创建4-5个客户托管策略\n   - 合并相关权限\n   - 减少总策略数\n\n2. 使用权限边界：\n   - 定义最大权限\n   - 不计入10个限制\n   - 与IAM策略结合\n\n3. 服务角色：\n   - 为不同功能创建多个角色\n   - 每个角色承载部分权限\n   - 应用扮演不同角色\n\n4. 权限范围缩小：\n   - 使用Condition限制\n   - 指定具体资源\n   - 减少权限宽度\n\n最佳实践：\n- 定期审计权限\n- 合并相同功能\n- 使用客户策略\n- 应用最小权限\n- 监控权限使用",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
+  },
+  {
+    "question_id": "Q12",
+    "question": "如何排查以下错误？请求中包含的安全令牌无效。",
+    "reference_answer": "\"安全令牌无效\"错误排查：\n\n错误原因分析：\n\n1. 临时凭证过期：\n   - STS凭证有有效期\n   - 检查Expiration时间\n   - 需要重新获取凭证\n\n2. 格式错误：\n   - SessionToken格式错误\n   - 复制粘贴时残缺\n   - 验证完整性\n\n3. 凭证不匹配：\n   - AccessKeyId和SecretAccessKey不匹配\n   - SessionToken与密钥不配对\n   - 需要重新获取\n\n4. 账户权限问题：\n   - 用户被禁用\n   - 访问密钥被删除\n   - 无权扮演角色\n\n排查步骤：\n\n1. 检查凭证有效期：\n```\naws sts get-caller-identity\n```\n\n2. 验证凭证格式：\n- 检查环境变量\n- 查看credentials文件\n- 确保无空格或换行\n\n3. 重新获取凭证：\n```\naws sts assume-role ...\n```\n\n4. 检查IAM权限：\n- 验证用户存在\n- 检查访问密钥状态\n- 确认信任关系\n\n5. 查看CloudTrail：\n- 搜索InvalidUserID\n- 搜索InvalidClientTokenId\n- 分析失败原因\n\n解决方案：\n\n1. 刷新凭证：\n- 重新运行assume-role\n- 更新环境变量\n- 或更新credentials\n\n2. 验证配置：\n- 检查~/.aws/credentials\n- 检查环境变量\n- 检查CLI配置\n\n3. 恢复访问：\n- 使用主用户凭证\n- 重新启用访问密钥\n- 更新IAM策略",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/iam/latest/userguide/"]
+  },
+  {
+    "question_id": "Q13",
+    "question": "什么是 SIGV4？请尽可能详细地解释 SIGV4 过程",
+    "reference_answer": "SIGV4（签名版本4）AWS请求签名过程：\n\n定义：\n- AWS API请求签名机制\n- 验证请求真实性和完整性\n- 使用HMAC-SHA256算法\n- 当前标准签名版本\n\nSIGV4过程详解：\n\n第1步 - 创建规范请求（Canonical Request）：\n- HTTPMethod（GET、POST等）\n- CanonicalURI（资源路径）\n- CanonicalQueryString（查询参数，已排序）\n- CanonicalHeaders（请求头，已排序）\n- SignedHeaders（参与签名的头部）\n- HashedPayload（请求体的SHA256哈希）\n\n第2步 - 创建待签名字符串：\n- 格式：\n  Algorithm\\n\n  RequestDateTime\\n\n  CredentialScope\\n\n  HashedCanonicalRequest\n- 其中：\n  - Algorithm = AWS4-HMAC-SHA256\n  - RequestDateTime = ISO8601格式\n  - CredentialScope = date/region/service/aws4_request\n  - HashedCanonicalRequest = 规范请求的SHA256\n\n第3步 - 计算签名：\n- 使用派生签名密钥\n- kSecret = \"AWS4\" + SecretAccessKey\n- kDate = HMAC-SHA256(kSecret, Date)\n- kRegion = HMAC-SHA256(kDate, Region)\n- kService = HMAC-SHA256(kRegion, Service)\n- kSigning = HMAC-SHA256(kService, \"aws4_request\")\n- Signature = HEX(HMAC-SHA256(kSigning, StringToSign))\n\n第4步 - 添加授权头：\n- Authorization头格式：\n  AWS4-HMAC-SHA256 Credential=..., SignedHeaders=..., Signature=...\n- Credential包含：\n  - AccessKeyId\n  - Date\n  - Region\n  - Service\n  - \"aws4_request\"\n\n参与的凭证：\n- AccessKeyId\n- SecretAccessKey\n- SessionToken（如果使用临时凭证）\n\n关键特性：\n\n1. 请求唯一性：\n- 每个请求生成不同签名\n- 防止重放攻击\n\n2. 区域感知：\n- 包含目标区域\n- 防止跨区域冒充\n\n3. 时间戳：\n- 使用UTC时间\n- 防止时间差异攻击\n\n4. 头部验证：\n- 验证指定头部\n- 防止头部篡改\n\n常见实现：\n- AWS SDK自动处理\n- CLI自动签名请求\n- 原始HTTP需手动实现\n\n调试技巧：\n- 启用日志查看请求\n- 检查时间同步\n- 验证凭证格式\n- 查看CloudTrail",
+    "reference_links": ["https://docs.aws.amazon.com/zh_cn/general/latest/gr/signature-version-4.html"]
   }
 ]

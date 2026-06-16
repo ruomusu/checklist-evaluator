@@ -1,7 +1,7 @@
 [
   {
     "question_id": "Q1",
-    "question": "请说明 t2、t3、t3a、t4g 实例类型的主要区别（包括架构、处理器、性价比）",
+    "question": "t2、t3、t3a、t4g 实例类型之间有什么区别？t4g 实例类型的 EC2 能否启动 Windows 实例？",
     "reference_answer": "T 系列均为可突增实例类型，共享同一套 CPU 积分机制（基线以下积累积分，突增时消耗积分，积分耗尽则限速）。支持标准模式（受限）和无限模式（额外付费突增）。具体区别：t2 是上一代可突增实例，基于 Xen 虚拟化，采用 Intel Xeon 处理器，不默认开启 Unlimited 模式。t3 基于 Nitro 平台，采用 Intel Xeon 可扩展处理器（默认 i 系列），默认开启 Unlimited 模式，相比 t2 性价比提升约 30%，提供最佳峰值性价比的 x86 工作负载。t3a 基于 Nitro 平台，采用 AMD 第一代 EPYC 处理器，相比 t3 花费降低约 10%，是成本最低的 x86 可突增实例。t4g 基于 Nitro 平台，采用 AWS Graviton2 处理器（Arm Neoverse N1 内核），相比 t3 性价比提升约 40%、花费降低约 20%，是成本最低的 EC2 实例，适合 ARM 兼容的工作负载。实例类型命名规则中：无后缀或后缀 i/a 一般为 x86，后缀 g 一般为 ARM，后缀 d 表示实例存储。注意：t4g（ARM 架构）不支持 Windows 操作系统。",
     "reference_links": [
       "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances.html",
@@ -11,7 +11,7 @@
   },
   {
     "question_id": "Q2",
-    "question": "请解释 Nitro 架构与 Xen 架构的核心区别，并列举属于各架构的实例系列",
+    "question": "请举例说明哪些实例类型是基于 Nitro 的，哪些是基于 Xen 的。Xen 和 Nitro 有什么区别？",
     "reference_answer": "Xen 和 Nitro 都是虚拟化技术，通过抽象层将物理资源虚拟化并高效分配。Xen 架构：早期 EC2 使用的开源虚拟化平台，直接运行在硬件上，由 Dom0 管理域控制 I/O 调度，采用完整 Xen hypervisor，虚拟化开销较高（尤其在网络/存储 I/O），启动较慢（约 20 秒，需启动完整 Xen Dom0），EBS 优化为可选功能。典型 Xen 实例包括：M4 及以下、T2、C4、R4、X1、D2、H1、I3 及以下、F1、G3、P2、P3。Nitro 架构：AWS 自研的硬件软件混合虚拟化平台，采用轻量级 hypervisor（基于 KVM），将网络、存储、安全等虚拟化功能卸载到专用 Nitro Card 硬件上，减少主机 CPU 负担。性能接近裸机（CPU 开销不到 1%），网络支持高达 200Gbps（ENA v2），启动更快（约 1 秒），EBS 优化默认开启。引入 Nitro Security Chip 保障硬件级安全。典型 Nitro 实例包括：T3、M5、C5、R5、M6i、C6g 及更新的实例系列。核心虚拟化功能包括：CPU 虚拟化、内存虚拟化、I/O 虚拟化、存储虚拟化、网络虚拟化。",
     "reference_links": [
       "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
@@ -38,7 +38,7 @@
   },
   {
     "question_id": "Q5",
-    "question": "EC2 实例生命周期有哪些阶段？停止/启动与重启有什么区别？",
+    "question": "实例生命周期有哪些阶段？停止并启动实例时需要注意什么？与重启实例有什么不同？",
     "reference_answer": "EC2 实例生命周期包括：pending（启动中）、running（运行中）、stopping（停止中）、stopped（已停止）、shutting-down（终止中）、terminated（已终止）。停止再启动（Stop and Start）：停止后 AWS 不再对实例计算资源计费，但仍会产生 EBS 卷和弹性 IP 等附加资源费用；虚拟机完全关闭，物理主机资源被释放；下次启动可能分配到不同宿主机；非弹性 IP 的公网 IP 会改变；私有 IP 默认保留；实例存储数据丢失但 EBS 卷数据保留；比重启耗时更长。重启（Reboot）：继续计费；物理主机不变；仅操作系统层面重启；所有 IP 地址不变；所有存储数据（包括实例存储）全部保留；启动更快。",
     "reference_links": [
       "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html",
@@ -173,7 +173,7 @@
   },
   {
     "question_id": "Q21",
-    "question": "增强联网使用什么技术？支持增强联网的实例有哪些额外网络指标？如何查看？",
+    "question": "增强联网使用什么技术？支持增强联网的实例有哪些额外的网络指标？如何查看这些指标？这些指标提供什么信息？",
     "reference_answer": "增强联网技术：1) Elastic Network Adapter (ENA)：所有基于 Nitro 的实例和部分基于 Xen 的实例支持；2) Intel 82599 虚拟功能（VF）接口：C3、C4、D2、I2、M4（不含 m4.16xlarge）和 R3 实例支持。启用增强网络的实例提供以下额外指标：1) bw_in_allowance_exceeded：因接收带宽超限而丢弃的数据包数；2) bw_out_allowance_exceeded：因发送带宽超限而丢弃的数据包数；3) pps_allowance_exceeded：因每秒数据包数超限而丢弃的数据包数；4) conntrack_allowance_exceeded：因并发连接数超限而丢弃的数据包数；5) linklocal_allowance_exceeded：因与 AWS 本地服务的带宽超限而丢弃的数据包数。查看方式：通过安装 CloudWatch Agent 收集并上报这些 ENA 驱动层面的指标。",
     "reference_links": [
       "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enhanced-networking.html",
