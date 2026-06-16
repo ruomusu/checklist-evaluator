@@ -28,6 +28,8 @@ from knowledge_provider import create_provider
 from storage import save_report as db_save_report, get_history as db_get_history, toggle_highlight as db_toggle_highlight
 from storage import register_user as db_register_user, verify_user as db_verify_user, get_user as db_get_user, get_all_users as db_get_all_users
 from storage import get_all_history as db_get_all_history
+from storage import get_favorite_categories as db_get_favorite_categories, save_favorite_categories as db_save_favorite_categories
+from storage import add_to_favorite as db_add_to_favorite, remove_from_favorite as db_remove_from_favorite
 from auth import create_access_token, get_current_user
 
 import re
@@ -148,7 +150,7 @@ async def _stream_evaluate_answers(
             pool, evaluator.evaluate, knowledge_items, student_answers
         )
     report.student_name = student_name
-    report.total_questions = len(student_answers)
+    report.total_questions = report.excellent_count + report.satisfactory_count + report.fail_count
 
     # 生成报告
     generator = ReportGenerator()
@@ -323,6 +325,56 @@ async def toggle_highlight_endpoint(request: ToggleHighlightRequest):
         return JSONResponse(content={"status": "ok", "is_highlighted": new_state})
     except Exception as e:
         log(f"DynamoDB toggle 失败: {e}", stage="ERROR", level=logging.ERROR)
+        raise HTTPException(status_code=500, detail=f"操作失败: {e}")
+
+
+# ========================
+# 收藏夹 API
+# ========================
+
+class FavoriteRequest(BaseModel):
+    trainee_name: str
+    service_timestamp: str
+    category: str = "默认收藏"
+
+
+class FavoriteCategoriesRequest(BaseModel):
+    categories: list[str]
+
+
+@app.get("/api/favorites/categories", include_in_schema=False)
+async def get_favorites_categories(current_user: dict = Depends(get_current_user)):
+    """获取当前用户的收藏夹分类列表"""
+    username = current_user.get("trainee_name")
+    categories = db_get_favorite_categories(username)
+    return JSONResponse(content={"status": "ok", "categories": categories})
+
+
+@app.post("/api/favorites/categories", include_in_schema=False)
+async def save_favorites_categories(request: FavoriteCategoriesRequest, current_user: dict = Depends(get_current_user)):
+    """保存用户的收藏夹分类列表"""
+    username = current_user.get("trainee_name")
+    categories = db_save_favorite_categories(username, request.categories)
+    return JSONResponse(content={"status": "ok", "categories": categories})
+
+
+@app.post("/api/favorites/add", include_in_schema=False)
+async def add_favorite(request: FavoriteRequest, current_user: dict = Depends(get_current_user)):
+    """将记录添加到收藏夹"""
+    try:
+        db_add_to_favorite(request.trainee_name, request.service_timestamp, request.category)
+        return JSONResponse(content={"status": "ok", "category": request.category})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"操作失败: {e}")
+
+
+@app.post("/api/favorites/remove", include_in_schema=False)
+async def remove_favorite(request: ToggleHighlightRequest, current_user: dict = Depends(get_current_user)):
+    """将记录从收藏夹移除"""
+    try:
+        db_remove_from_favorite(request.trainee_name, request.service_timestamp)
+        return JSONResponse(content={"status": "ok"})
+    except Exception as e:
         raise HTTPException(status_code=500, detail=f"操作失败: {e}")
 
 

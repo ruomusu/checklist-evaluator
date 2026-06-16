@@ -283,3 +283,60 @@ def toggle_highlight(trainee_name: str, service_timestamp: str) -> bool:
 
     log(f"DynamoDB toggle | PK={trainee_name} | SK={service_timestamp} | → {new_state}", stage="REPORT")
     return new_state
+
+
+# ========================
+# 收藏夹相关
+# ========================
+
+def get_favorite_categories(trainee_name: str) -> list[str]:
+    """获取用户的收藏夹分类列表"""
+    table = _get_table()
+    resp = table.get_item(Key={
+        "trainee_name": trainee_name,
+        "service_timestamp": "FAV#categories",
+    })
+    item = resp.get("Item")
+    if not item:
+        return ["默认收藏"]
+    return item.get("categories", ["默认收藏"])
+
+
+def save_favorite_categories(trainee_name: str, categories: list[str]) -> list[str]:
+    """保存用户的收藏夹分类列表"""
+    table = _get_table()
+    table.put_item(Item={
+        "trainee_name": trainee_name,
+        "service_timestamp": "FAV#categories",
+        "categories": categories,
+    })
+    return categories
+
+
+def add_to_favorite(trainee_name: str, service_timestamp: str, category: str) -> str:
+    """将记录添加到收藏夹分类"""
+    table = _get_table()
+    table.update_item(
+        Key={
+            "trainee_name": trainee_name,
+            "service_timestamp": service_timestamp,
+        },
+        UpdateExpression="SET is_highlighted = :val, favorite_category = :cat",
+        ExpressionAttributeValues={":val": True, ":cat": category},
+    )
+    log(f"DynamoDB 收藏 | PK={trainee_name} | SK={service_timestamp} | 分类={category}", stage="REPORT")
+    return category
+
+
+def remove_from_favorite(trainee_name: str, service_timestamp: str) -> None:
+    """将记录从收藏夹移除"""
+    table = _get_table()
+    table.update_item(
+        Key={
+            "trainee_name": trainee_name,
+            "service_timestamp": service_timestamp,
+        },
+        UpdateExpression="SET is_highlighted = :val REMOVE favorite_category",
+        ExpressionAttributeValues={":val": False},
+    )
+    log(f"DynamoDB 取消收藏 | PK={trainee_name} | SK={service_timestamp}", stage="REPORT")

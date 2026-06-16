@@ -408,7 +408,7 @@
                         <th>用户</th>
                         <th>服务类型</th>
                         <th>评估时间</th>
-                        <th>高亮</th>
+                        <th>收藏</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -575,7 +575,7 @@
                             <td>${item.trainee_name}</td>
                             <td>${item.service_type}</td>
                             <td>${item.created_at}</td>
-                            <td>${item.is_highlighted ? '⭐ 是' : '否'}</td>
+                            <td>${item.is_highlighted ? '⭐ ' + (item.favorite_category || '已收藏') : '—'}</td>
                             <td><button class="btn" onclick="viewReport('${item.service_timestamp}', '${item.trainee_name}')">查看报告</button></td>
                         </tr>
                     `).join('');

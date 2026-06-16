@@ -207,6 +207,25 @@
         .result-content .question-block-excellent { border-left: 4px solid var(--excellent); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--excellent-bg); }
         .result-content .question-block-satisfactory { border-left: 4px solid var(--satisfactory); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--satisfactory-bg); }
         .result-content .question-block-fail { border-left: 4px solid var(--fail); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--fail-bg); }
+        .result-content .q-title { font-weight: 600; margin-bottom: 8px; color: #1a1a1a; font-size: 0.95rem; }
+        .result-content .q-section { margin: 6px 0; border-radius: 6px; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.06); }
+        .result-content .q-section summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 0.9rem; color: #222; user-select: none; list-style: none; display: flex; align-items: center; gap: 6px; }
+        .result-content .q-section summary::before { content: '▶'; font-size: 0.65rem; color: #666; transition: transform 0.2s; }
+        .result-content .q-section[open] summary::before { transform: rotate(90deg); }
+        .result-content .q-section summary::-webkit-details-marker { display: none; }
+        .result-content .q-section-body { padding: 8px 14px 14px; font-size: 0.88rem; line-height: 1.7; white-space: pre-wrap; color: #333; border-top: 1px solid rgba(0,0,0,0.06); }
+        .result-content .q-section-answer { background: #eef6ff; border-color: #b3d4f7; }
+        .result-content .q-section-answer summary { color: #1a5fa8; }
+        .result-content .q-section-answer summary::before { color: #1a5fa8; }
+        .result-content .q-section-answer .q-section-body { color: #1a3a5c; border-color: #b3d4f7; }
+        .result-content .q-section-strength { background: #eefbf0; border-color: #8fd4a0; }
+        .result-content .q-section-strength summary { color: #1a7a2e; }
+        .result-content .q-section-strength summary::before { color: #1a7a2e; }
+        .result-content .q-section-strength .q-section-body { color: #1a4a22; border-color: #8fd4a0; }
+        .result-content .q-section-gap { background: #fff4f0; border-color: #f0a88a; }
+        .result-content .q-section-gap summary { color: #b33a1a; }
+        .result-content .q-section-gap summary::before { color: #b33a1a; }
+        .result-content .q-section-gap .q-section-body { color: #5c2210; border-color: #f0a88a; }
         /* Excellent 折叠面板 */
         .result-content details.excellent-panel {
             border: 1.5px solid var(--excellent); border-radius: 12px;
@@ -421,6 +440,11 @@
             font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
         }
         .highlight-btn:hover { background: #ffd700; color: #333; }
+        .fav-action {
+            cursor: pointer; font-size: 0.65rem; opacity: 0.5; transition: opacity 0.2s;
+            padding: 1px 3px; border-radius: 3px;
+        }
+        .fav-action:hover { opacity: 1; background: #f0f0f0; }
         @media (max-width: 1000px) { .history-sidebar { display: none !important; } }
     </style>
 </head>
@@ -499,7 +523,7 @@
         <!-- 历史记录侧边栏 -->
         <div class="history-toggle expanded" id="historyToggle" onclick="toggleHistorySidebar()">◀</div>
         <div class="history-sidebar" id="historySidebar">
-            <h4>🌟 高光记录</h4>
+            <h4>📁 收藏夹</h4>
             <div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">输入姓名后显示</div>
             <h4 style="margin-top:12px;">🕒 历史记录</h4>
             <div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">输入姓名后显示</div>
@@ -513,7 +537,7 @@
             <div class="result-content" id="resultContent"></div>
             <div class="btn-row">
                 <button class="btn-secondary btn-reset" id="resetBtn">重新评估</button>
-                <button class="highlight-btn" id="highlightBtn">⭐ 高光保存</button>
+                <button class="highlight-btn" id="highlightBtn">⭐ 添加收藏夹</button>
                 <button class="btn-secondary btn-download" id="downloadBtn">下载报告</button>
             </div>
         </div>
@@ -726,12 +750,29 @@
             document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
         });
 
-        // 高光保存（toggle 当前报告的高光状态）
+        // 收藏夹功能（替代原高光保存）
         let lastReportMarkdown = '';
         let lastSortKey = ''; // 当前报告在 DynamoDB 中的 sort key
         let lastReportUser = ''; // 当前报告的用户名
+        let favoriteCategories = ['默认收藏'];
+        
+        // 加载收藏夹分类
+        async function loadFavoriteCategories() {
+            try {
+                const resp = await fetch('/api/favorites/categories', {
+                    headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.categories && data.categories.length > 0) {
+                        favoriteCategories = data.categories;
+                    }
+                }
+            } catch(e) {}
+        }
+        loadFavoriteCategories();
+        
         document.getElementById('highlightBtn').addEventListener('click', async function(){
-            // 对于管理员，使用报告对应的用户名；对于普通用户，使用当前登录用户名
             const currentRole = localStorage.getItem('role');
             let targetUser;
             if (currentRole === 'admin' && lastReportUser) {
@@ -739,28 +780,168 @@
             } else {
                 targetUser = studentName.value || localStorage.getItem('username');
             }
-            if (!targetUser || !lastReportMarkdown) return;
+            if (!targetUser || !lastReportMarkdown || !lastSortKey) return;
 
-            // 如果有 sortKey，toggle 已有记录
-            if (lastSortKey) {
+            // 检查当前是否已收藏
+            const currentItem = historyList.find(i => i.service_timestamp === lastSortKey);
+            if (currentItem && currentItem.is_highlighted) {
+                // 已收藏 → 取消收藏
                 try {
-                    const resp = await fetch('/api/toggle-highlight', {
-                        method: 'PATCH',
-                        headers: {'Content-Type': 'application/json'},
+                    const resp = await fetch('/api/favorites/remove', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
                         body: JSON.stringify({ trainee_name: targetUser, service_timestamp: lastSortKey })
                     });
                     if (resp.ok) {
-                        const data = await resp.json();
-                        if (data.is_highlighted) {
-                            this.textContent = '⭐ 已高光（再次点击取消）';
-                        } else {
-                            this.textContent = '⭐ 高光保存';
-                        }
+                        this.textContent = '⭐ 添加收藏夹';
                         loadHistory(studentName.value || localStorage.getItem('username'));
                     }
-                } catch(e) {}
+                } catch(e) { alert('操作失败: ' + e.message); }
+            } else {
+                // 未收藏 → 弹出分类选择
+                showFavoritePicker(targetUser, lastSortKey);
             }
         });
+        
+        // 收藏夹分类选择弹窗
+        function showFavoritePicker(targetUser, sortKey) {
+            // 防止重复弹窗
+            if (document.getElementById('favModal')) return;
+            let html = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;" id="favModal">';
+            html += '<div style="background:white;border-radius:12px;padding:24px;max-width:400px;width:90%;">';
+            html += '<h3 style="margin-bottom:16px;font-size:1.1rem;">📁 添加到收藏夹</h3>';
+            html += '<div style="margin-bottom:12px;">';
+            favoriteCategories.forEach(cat => {
+                html += '<div style="padding:10px 12px;margin:4px 0;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all 0.2s;" class="fav-cat-option" data-cat="' + cat + '" onmouseover="this.style.borderColor=\'#0071e3\';this.style.background=\'#f0f7ff\'" onmouseout="this.style.borderColor=\'#e0e0e0\';this.style.background=\'white\'">' + cat + '</div>';
+            });
+            html += '</div>';
+            html += '<div style="border-top:1px solid #eee;padding-top:12px;margin-top:8px;">';
+            html += '<input type="text" id="newCatInput" placeholder="新建分类..." style="width:100%;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;margin-bottom:8px;">';
+            html += '<button onclick="createAndAddCategory(\'' + targetUser + '\',\'' + sortKey + '\')" style="width:100%;padding:8px;border:none;background:#0071e3;color:white;border-radius:6px;cursor:pointer;font-size:14px;">创建新分类并收藏</button>';
+            html += '</div>';
+            html += '<button onclick="document.getElementById(\'favModal\').remove()" style="margin-top:12px;width:100%;padding:8px;border:1px solid #e0e0e0;background:white;border-radius:6px;cursor:pointer;font-size:14px;">取消</button>';
+            html += '</div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+            
+            document.querySelectorAll('.fav-cat-option').forEach(el => {
+                el.addEventListener('click', function() {
+                    addToFavorite(targetUser, sortKey, this.dataset.cat);
+                });
+            });
+        }
+        
+        async function addToFavorite(targetUser, sortKey, category) {
+            try {
+                const resp = await fetch('/api/favorites/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
+                    body: JSON.stringify({ trainee_name: targetUser, service_timestamp: sortKey, category: category })
+                });
+                if (resp.ok) {
+                    const modal = document.getElementById('favModal');
+                    if (modal) modal.remove();
+                    document.getElementById('highlightBtn').textContent = '⭐ 已收藏（点击取消）';
+                    loadHistory(studentName.value || localStorage.getItem('username'));
+                } else {
+                    const err = await resp.json();
+                    alert('收藏失败: ' + (err.detail || '未知错误'));
+                }
+            } catch(e) { alert('收藏失败: ' + e.message); }
+        }
+        
+        async function createAndAddCategory(targetUser, sortKey) {
+            const newCat = document.getElementById('newCatInput').value.trim();
+            if (!newCat) { alert('请输入分类名称'); return; }
+            if (!favoriteCategories.includes(newCat)) {
+                favoriteCategories.push(newCat);
+                await fetch('/api/favorites/categories', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
+                    body: JSON.stringify({ categories: favoriteCategories })
+                });
+            }
+            addToFavorite(targetUser, sortKey, newCat);
+        }
+        
+        // 重命名收藏夹分类
+        async function renameFavCategory(oldName) {
+            // 使用自定义弹窗替代原生prompt
+            if (document.getElementById('renameModal')) return;
+            let html = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;" id="renameModal">';
+            html += '<div style="background:white;border-radius:12px;padding:24px;max-width:380px;width:90%;">';
+            html += '<h3 style="margin-bottom:16px;font-size:1.1rem;">✏️ 重命名分类</h3>';
+            html += '<input type="text" id="renameCatInput" value="' + oldName + '" style="width:100%;padding:10px 12px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;margin-bottom:16px;">';
+            html += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+            html += '<button onclick="document.getElementById(\'renameModal\').remove()" style="padding:8px 16px;border:1px solid #e0e0e0;background:white;border-radius:6px;cursor:pointer;font-size:14px;">取消</button>';
+            html += '<button onclick="confirmRenameFavCategory(\'' + oldName + '\')" style="padding:8px 16px;border:none;background:#0071e3;color:white;border-radius:6px;cursor:pointer;font-size:14px;">确定</button>';
+            html += '</div></div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+            document.getElementById('renameCatInput').focus();
+            document.getElementById('renameCatInput').select();
+        }
+        
+        async function confirmRenameFavCategory(oldName) {
+            const newName = document.getElementById('renameCatInput').value.trim();
+            document.getElementById('renameModal').remove();
+            if (!newName || newName === oldName) return;
+            
+            // 更新分类列表
+            const idx = favoriteCategories.indexOf(oldName);
+            if (idx !== -1) favoriteCategories[idx] = newName;
+            
+            const targetUser = studentName.value || localStorage.getItem('username');
+            const itemsToUpdate = historyList.filter(i => i.is_highlighted && (i.favorite_category || '默认收藏') === oldName);
+            
+            // 先乐观更新UI
+            itemsToUpdate.forEach(i => { i.favorite_category = newName; });
+            renderHistorySidebar();
+            
+            // 并行发送所有请求
+            const headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')};
+            await Promise.all([
+                fetch('/api/favorites/categories', { method: 'POST', headers, body: JSON.stringify({ categories: favoriteCategories }) }),
+                ...itemsToUpdate.map(item => 
+                    fetch('/api/favorites/add', { method: 'POST', headers, body: JSON.stringify({ trainee_name: item.trainee_name || targetUser, service_timestamp: item.service_timestamp, category: newName }) })
+                )
+            ]);
+        }
+        
+        // 删除收藏夹分类
+        async function deleteFavCategory(catName) {
+            if (document.getElementById('deleteModal')) return;
+            let html = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;" id="deleteModal">';
+            html += '<div style="background:white;border-radius:12px;padding:24px;max-width:380px;width:90%;">';
+            html += '<h3 style="margin-bottom:12px;font-size:1.1rem;">🗑️ 删除分类</h3>';
+            html += '<p style="font-size:14px;color:#666;margin-bottom:16px;">确定删除分类「' + catName + '」？<br>该分类下的收藏记录将被取消收藏。</p>';
+            html += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+            html += '<button onclick="document.getElementById(\'deleteModal\').remove()" style="padding:8px 16px;border:1px solid #e0e0e0;background:white;border-radius:6px;cursor:pointer;font-size:14px;">取消</button>';
+            html += '<button onclick="confirmDeleteFavCategory(\'' + catName + '\')" style="padding:8px 16px;border:none;background:#ff4444;color:white;border-radius:6px;cursor:pointer;font-size:14px;">删除</button>';
+            html += '</div></div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+        
+        async function confirmDeleteFavCategory(catName) {
+            document.getElementById('deleteModal').remove();
+            
+            // 从分类列表移除
+            favoriteCategories = favoriteCategories.filter(c => c !== catName);
+            
+            const targetUser = studentName.value || localStorage.getItem('username');
+            const itemsToRemove = historyList.filter(i => i.is_highlighted && (i.favorite_category || '默认收藏') === catName);
+            
+            // 先乐观更新UI
+            itemsToRemove.forEach(i => { i.is_highlighted = false; delete i.favorite_category; });
+            renderHistorySidebar();
+            
+            // 并行发送所有请求
+            const headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')};
+            await Promise.all([
+                fetch('/api/favorites/categories', { method: 'POST', headers, body: JSON.stringify({ categories: favoriteCategories }) }),
+                ...itemsToRemove.map(item =>
+                    fetch('/api/favorites/remove', { method: 'POST', headers, body: JSON.stringify({ trainee_name: item.trainee_name || targetUser, service_timestamp: item.service_timestamp }) })
+                )
+            ]);
+        }
 
         // 历史记录加载与渲染
         let historyList = [];
@@ -812,17 +993,17 @@
             
             if (historyList.length === 0) {
                 const emptyMessage = currentRole === 'admin' ? 
-                    '<h4>🌟 高光记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 全部历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>' :
-                    '<h4>🌟 高光记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>';
+                    '<h4>📁 收藏夹</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 全部历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>' :
+                    '<h4>📁 收藏夹</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>';
                 sidebar.innerHTML = emptyMessage;
                 return;
             }
 
-            let h = '<h4>🌟 高光记录</h4>';
+            let h = '<h4>📁 收藏夹</h4>';
             const highlighted = historyList.filter(i => i.is_highlighted);
             
             if (currentRole === 'admin') {
-                // 管理员：按用户分组显示高光记录
+                // 管理员：按用户分组显示收藏记录
                 if (highlighted.length > 0) {
                     const groupedHighlights = groupByUser(highlighted);
                     Object.keys(groupedHighlights).sort().forEach(username => {
@@ -832,7 +1013,7 @@
                         });
                     });
                 } else {
-                    h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无高光记录</div>';
+                    h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无收藏记录</div>';
                 }
                 
                 h += '<h4 style="margin-top:16px;">🕒 全部历史记录</h4>';
@@ -848,11 +1029,25 @@
                     });
                 });
             } else {
-                // 普通用户：正常显示
+                // 普通用户：按分类显示收藏
                 if (highlighted.length > 0) {
-                    highlighted.forEach(item => { h += renderHistoryItem(item, false); });
+                    const grouped = {};
+                    highlighted.forEach(item => {
+                        const cat = item.favorite_category || '默认收藏';
+                        if (!grouped[cat]) grouped[cat] = [];
+                        grouped[cat].push(item);
+                    });
+                    Object.keys(grouped).sort().forEach(cat => {
+                        h += '<div style="font-size:0.7rem;color:#666;margin:8px 0 4px;font-weight:600;display:flex;align-items:center;justify-content:space-between;">';
+                        h += '<span>📂 ' + cat + '</span>';
+                        h += '<span style="display:flex;gap:2px;">';
+                        h += '<span class="fav-action" onclick="renameFavCategory(\'' + cat + '\')" title="重命名">✏️</span>';
+                        h += '<span class="fav-action" onclick="deleteFavCategory(\'' + cat + '\')" title="删除分类">🗑️</span>';
+                        h += '</span></div>';
+                        grouped[cat].forEach(item => { h += renderHistoryItem(item, false); });
+                    });
                 } else {
-                    h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无高光记录</div>';
+                    h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无收藏记录</div>';
                 }
                 
                 h += '<h4 style="margin-top:16px;">🕒 我的历史记录</h4>';
@@ -872,7 +1067,7 @@
                         lastReportMarkdown = data;
                         lastReportUser = this.dataset.user || ''; // 记录报告对应的用户名
                         const isH = this.dataset.highlighted === 'true';
-                        document.getElementById('highlightBtn').textContent = isH ? '⭐ 已高光（再次点击取消）' : '⭐ 高光保存';
+                        document.getElementById('highlightBtn').textContent = isH ? '⭐ 已收藏（点击取消）' : '⭐ 添加收藏夹';
                     }
                 });
             });
@@ -944,14 +1139,18 @@
                 const qidMatch = content.match(/\*\*(Q\d+)/);
                 const qid = qidMatch ? qidMatch[1] : '';
                 const anchor = qid ? ' id="q-' + qid + '"' : '';
+                
+                // 将内容拆分为标题行和子部分（学生作答/答题亮点/知识盲区）
+                const renderedContent = renderQuestionContent(content);
+                
                 if (currentSection === 'excellent') {
-                    excellentContent.push('<div class="question-block-excellent"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    excellentContent.push('<div class="question-block-excellent"' + anchor + '>' + renderedContent + '</div>');
                     if (qid) navData.excellent.push(qid);
                 } else if (currentSection === 'satisfactory') {
-                    satisfactoryContent.push('<div class="question-block-satisfactory"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    satisfactoryContent.push('<div class="question-block-satisfactory"' + anchor + '>' + renderedContent + '</div>');
                     if (qid) navData.satisfactory.push(qid);
                 } else if (currentSection === 'fail') {
-                    failContent.push('<div class="question-block-fail"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    failContent.push('<div class="question-block-fail"' + anchor + '>' + renderedContent + '</div>');
                     if (qid) navData.fail.push(qid);
                 } else if (currentSection === 'reading') {
                     readingContent.push('<div class="reading-card">' + escapeHtml(content) + '</div>');
@@ -959,6 +1158,56 @@
                     html += escapeHtml(content) + '\n';
                 }
                 questionBuffer = [];
+            }
+            
+            function renderQuestionContent(content) {
+                // 分割出标题行（第一行含 ** 和 — ）和后续内容
+                const lines = content.split('\n');
+                let titleLine = '';
+                let rest = '';
+                
+                // 找到标题行（包含题目和评分）
+                let titleEnd = 0;
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].match(/^\*\*Q\d+.*—/)) {
+                        titleLine = lines[i];
+                        titleEnd = i + 1;
+                        break;
+                    }
+                }
+                if (!titleLine) return escapeHtml(content);
+                rest = lines.slice(titleEnd).join('\n');
+                
+                // 拆分为子部分
+                const sections = [];
+                const sectionPattern = /\*\*(📝 学生作答|🌟 答题亮点|⚠️ 知识盲区|⚠️ 轻微遗漏)\*\*/g;
+                const markers = [...rest.matchAll(sectionPattern)];
+                
+                let beforeSections = rest;
+                if (markers.length > 0) {
+                    beforeSections = rest.substring(0, markers[0].index).trim();
+                    for (let i = 0; i < markers.length; i++) {
+                        const start = markers[i].index;
+                        const end = i + 1 < markers.length ? markers[i + 1].index : rest.length;
+                        const sectionTitle = markers[i][1];
+                        const sectionBody = rest.substring(start + markers[i][0].length, end).trim();
+                        sections.push({ title: sectionTitle, body: sectionBody });
+                    }
+                }
+                
+                let result = '<div class="q-title">' + escapeHtml(titleLine) + '</div>';
+                if (beforeSections) result += '<div>' + escapeHtml(beforeSections) + '</div>';
+                
+                sections.forEach(sec => {
+                    let secClass = 'q-section';
+                    if (sec.title.includes('学生作答')) secClass += ' q-section-answer';
+                    else if (sec.title.includes('答题亮点')) secClass += ' q-section-strength';
+                    else if (sec.title.includes('知识盲区') || sec.title.includes('轻微遗漏')) secClass += ' q-section-gap';
+                    result += '<details class="' + secClass + '"><summary class="q-section-title">' + escapeHtml(sec.title) + '</summary>';
+                    result += '<div class="q-section-body">' + escapeHtml(sec.body) + '</div></details>';
+                });
+                
+                return result;
             }
 
             let headerDone = false;
