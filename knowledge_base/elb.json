@@ -1,0 +1,34 @@
+[
+  {
+    "question_id": "Q1",
+    "question": "What are the three types of load balancers in AWS and their differences?",
+    "reference_answer": "AWS提供三种负载均衡器：\n\n1. 应用负载均衡器 (ALB - Application Load Balancer)：\n   - 工作层：应用层（第7层）\n   - 基于内容的路由：URL路径、主机名、HTTP头\n   - 支持协议：HTTP、HTTPS、gRPC\n   - 最高性能：每秒百万级请求\n   - 延迟：低延迟\n   - 使用场景：Web应用、微服务、API\n   - 成本：最高\n\n2. 网络负载均衡器 (NLB - Network Load Balancer)：\n   - 工作层：传输层（第4层）\n   - 基于连接的路由：IP协议、TCP/UDP端口\n   - 支持协议：TCP、UDP、TLS、QUIC\n   - 最高性能：每秒数百万级请求\n   - 延迟：极低延迟（微秒级）\n   - 使用场景：非HTTP协议、极端性能、游戏、IoT\n   - 成本：中等\n   - 特点：处理大量并发连接\n\n3. 经典负载均衡器 (CLB - Classic Load Balancer)：\n   - 工作层：混合（第4和第7层）\n   - 基于连接和内容路由\n   - 支持协议：HTTP、HTTPS、TCP、SSL\n   - 性能：中等\n   - 延迟：中等\n   - 使用场景：传统应用，向后兼容\n   - 成本：最低\n   - 特点：EC2-Classic中推荐（现已弃用）",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+    ]
+  },
+  {
+    "question_id": "Q2",
+    "question": "How does health checking work in load balancers?",
+    "reference_answer": "负载均衡器的健康检查机制：\n\n定义：\n- 定期检查目标实例的健康状态\n- 仅将流量路由到健康的目标\n- 自动从负载均衡器移除不健康的目标\n- 目标恢复后自动加入\n\n健康检查参数：\n\n1. 协议和端口：HTTP/HTTPS、TCP、GRPC\n\n2. 检查间隔：默认30秒，范围5-300秒\n\n3. 超时时间：默认5秒，范围2-120秒\n\n4. 健康阈值：默认3次连续成功\n\n5. 不健康阈值：默认3次连续失败\n\n最佳实践：\n- 创建专用/health端点\n- 快速返回检查结果\n- 根据应用需求调整参数\n- 监控检查失败原因",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/elasticloadbalancing/latest/application/target-group-health-checks.html"
+    ]
+  },
+  {
+    "question_id": "Q3",
+    "question": "What is a target group and how does ALB routing work?",
+    "reference_answer": "目标组和ALB路由机制：\n\n目标组定义：\n- 将流量路由到的一组目标\n- 目标可以是EC2实例、Lambda、IP地址\n- 每个目标组有独立的健康检查配置\n- 支持多种目标类型混合\n\nALB路由规则：\n\n1. 监听器规则：\n   - 基于URL路径：/api/* → 后端API\n   - 基于主机名：api.example.com → API目标组\n   - 基于HTTP头：X-Custom-Header\n   - 基于查询参数：?category=books\n   - 基于方法：GET、POST、PUT\n\n2. 路由优先级：\n   - 规则按优先级顺序评估\n   - 第一个匹配的规则生效\n   - 默认规则优先级最低",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/elasticloadbalancing/latest/application/load-balancer-listeners.html"
+    ]
+  },
+  {
+    "question_id": "Q4",
+    "question": "How do you set up SSL/TLS termination on load balancers?",
+    "reference_answer": "负载均衡器上的SSL/TLS终止配置：\n\nSSL/TLS终止概念：\n- 负载均衡器处理加密/解密\n- 后端实例接收未加密流量\n- 节省实例计算资源\n- 集中管理证书\n\n配置步骤：\n\n1. 创建HTTPS监听器：\n   - 选择端口443\n   - 关联证书\n   - 配置安全策略\n\n2. 安全策略：\n   - 定义支持的TLS版本\n   - 选择密码套件\n   - 平衡安全性和兼容性\n\n3. HTTP重定向：\n   - 自动将HTTP重定向到HTTPS\n   - 保持路径和查询参数",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/elasticloadbalancing/latest/application/terminating-https-traffic.html"
+    ]
+  }
+]
