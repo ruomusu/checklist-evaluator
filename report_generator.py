@@ -49,9 +49,9 @@ class ReportGenerator:
         sat_pct = round(report.satisfactory_count / total * 100)
         fail_pct = round(report.fail_count / total * 100)
         lines.append(f"总计 {report.total_questions} 题 | "
-                     f"✅ Excellent (85%+) {report.excellent_count} ({exc_pct}%) | "
-                     f"⚠️ Satisfactory (60%-84%) {report.satisfactory_count} ({sat_pct}%) | "
-                     f"❌ Fail (<60%) {report.fail_count} ({fail_pct}%)")
+                     f"✅ Excellent (90%+) {report.excellent_count} ({exc_pct}%) | "
+                     f"⚠️ Satisfactory (75%-89%) {report.satisfactory_count} ({sat_pct}%) | "
+                     f"❌ Fail (<75%) {report.fail_count} ({fail_pct}%)")
         lines.append("")
         lines.append("---")
         lines.append("")
