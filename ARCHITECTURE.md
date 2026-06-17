@@ -368,6 +368,8 @@ python main.py answers.md ec2-basics 张三           # 完整参数
 # 开发模式（自动重载）
 uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
+nohup uvicorn api:app --host 0.0.0.0 --port 443 --ssl-keyfile key.pem --ssl-certfile cert.pem > server.log 2>&1 &
+
 # 生产模式
 uvicorn api:app --host 0.0.0.0 --port 8000 --workers 2
 

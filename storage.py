@@ -240,13 +240,16 @@ def save_report(
 
 
 def get_history(trainee_name: str) -> list[dict]:
-    """查询某新人的所有历史记录，按时间倒序"""
+    """查询某新人的所有历史记录，按时间倒序（最新在最前）"""
     table = _get_table()
     response = table.query(
         KeyConditionExpression=Key("trainee_name").eq(trainee_name),
-        ScanIndexForward=False,
     )
     items = response.get("Items", [])
+    # 过滤掉用户信息记录
+    items = [i for i in items if not i.get("service_timestamp", "").startswith("USER#")]
+    # 按 created_at 倒序排列（最新在最前）
+    items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     log(f"DynamoDB 查询 | PK={trainee_name} | {len(items)} 条", stage="KB")
     return items
 

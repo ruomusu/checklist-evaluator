@@ -190,14 +190,13 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.04);
         }
         .report-screenshots {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+            display: flex; flex-direction: column; gap: 40px;
         }
         .report-screenshot {
-            border-radius: 12px; overflow: hidden;
+            border-radius: 14px; overflow: hidden;
             border: 1px solid rgba(0,0,0,0.08);
             box-shadow: 0 4px 16px rgba(0,0,0,0.06);
             transition: all 0.3s;
-            cursor: pointer;
         }
         .report-screenshot:hover {
             transform: translateY(-3px);
@@ -205,13 +204,24 @@
         }
         .report-screenshot img {
             width: 100%; height: auto; display: block;
+            cursor: pointer; transition: opacity 0.2s;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
         }
+        .report-screenshot img:hover { opacity: 0.9; }
         .report-screenshot .screenshot-caption {
-            padding: 10px 14px;
+            padding: 12px 16px;
             background: rgba(255,255,255,0.95);
-            font-size: 0.78rem; color: var(--text-secondary);
+            font-size: 0.82rem; color: var(--text-secondary);
             text-align: center; font-weight: 500;
         }
+        /* Lightbox */
+        .lightbox {
+            display: none; position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+            align-items: center; justify-content: center; cursor: zoom-out;
+        }
+        .lightbox.active { display: flex; }
+        .lightbox img { max-width: 92vw; max-height: 90vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
 
         .footer {
             text-align: center; padding: 48px 0;
@@ -222,7 +232,7 @@
             .sidebar { display: none; }
             .main { margin-left: 0; padding-right: 0; }
             .benefits-grid { grid-template-columns: 1fr; }
-            .report-screenshots { grid-template-columns: 1fr; }
+            .report-screenshots { gap: 24px; }
             .floating-badge { display: none; }
             .hero h1 { font-size: 2.2rem; }
         }
@@ -250,7 +260,7 @@
             <div class="subtitle">AI 驱动的 CheckList 自助评估系统</div>
             <div class="desc">
                 自动评估New Hire对 Amazon 核心服务的掌握程度，<br>
-                同学随时自助 Check，导师高效掌握全局，<br>
+                New Hire随时自助 Check，导师高效掌握全局，<br>
                 评估结果可追溯、提升建议智能生成。
             </div>
             <a href="#" id="ctaButton" class="btn-cta">立即使用 →</a>
@@ -261,7 +271,7 @@
             <p class="section-desc">让 CheckList 评估更高效、更自助、更有据可循</p>
             <div class="benefits-grid">
                 <div class="benefit-card"><div class="emoji">⏰</div><h4>导师高效掌握全局</h4><p>每道题的掌握程度一目了然，导师快速了解整体情况</p></div>
-                <div class="benefit-card"><div class="emoji">🙋</div><h4>同学随时自助 Check</h4><p>同学可随时提交答卷获得即时反馈</p></div>
+                <div class="benefit-card"><div class="emoji">🙋</div><h4>New Hire随时自助 Check</h4><p>New Hire可随时提交答卷获得即时反馈</p></div>
         </section>
 
         <section id="flow">
@@ -270,30 +280,28 @@
             <div class="flow">
                 <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><h4>选择服务 & 提交答卷</h4><p>切换 Amazon 服务（EC2、EBS、S3 等），上传答卷文件或在线逐题作答</p></div></div>
                 <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><h4>AI 自动评估</h4><p>AI 逐题智能分析，在线输出评估结果，实时展示进度</p></div></div>
-                <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><h4>查看报告 & 存档</h4><p>按评级分组查看结果，收藏心仪报告，下载或回看历史报告</p></div></div>
+                <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><h4>查看报告 & 存档</h4><p>按评级分组查看结果，收藏重要报告，下载或回看历史报告</p></div></div>
             </div>
         </section>
 
         <section id="report">
-            <h2>报告示例</h2>
+ <h2>报告示例</h2>
             <p class="section-desc">功能完整展示</p>
             <div class="report-preview">
                 <div class="report-screenshots">
                     <div class="report-screenshot">
-                        <img src="assets/feature-navigation.png" alt="服务导航 - 多服务切换与题库选择">
-                        <div class="screenshot-caption">🧭 服务导航 — 多服务自由切换</div>
+                        <img src="assets/image.png" alt="管理后台 - 查看学员历史评估记录">
+                        <img src="assets/image1.png" alt="管理后台 - 查看学员具体答题详情">
+                        <div class="screenshot-caption">👁️ 导师后台 — 总览所有学员评估记录，一键查看完整答题详情</div>
                     </div>
                     <div class="report-screenshot">
-                        <img src="assets/feature-sections.png" alt="报告分区 - 按评级分组展示评估结果">
-                        <div class="screenshot-caption">📊 报告分区 — 按评级分组展示</div>
+                        <img src="assets/feature-sections-2.png" alt="评估报告分区展示">
+                        <img src="assets/feature-sections-1.png" alt="逐题亮点与待提升知识点">
+                        <div class="screenshot-caption">📊 评估报告 — 按评级分组展示，逐题列出答题亮点与待提升知识点</div>
                     </div>
                     <div class="report-screenshot">
-                        <img src="assets/feature-favorites.png" alt="收藏功能 - 高光标记重要报告">
-                        <div class="screenshot-caption">⭐ 收藏功能 — 高光标记重要评估报告</div>
-                    </div>
-                    <div class="report-screenshot">
-                        <img src="assets/feature-history.png" alt="历史记录 - 评估报告归档与回看">
-                        <div class="screenshot-caption">📁 历史记录 — 评估报告归档与回看</div>
+                        <img src="assets/feature-favorites.png" alt="收藏与历史 - 高光标记重要报告并自动归档">
+                        <div class="screenshot-caption">⭐ 收藏与历史 — 高光标记重要报告，自动归档可随时回看</div>
                     </div>
                 </div>
             </div>
@@ -328,6 +336,19 @@
             });
         }, { threshold: 0.3 });
         document.querySelectorAll('section, .hero').forEach(s => observer.observe(s));
+
+        // Lightbox 点击放大
+        const lightbox = document.createElement('div');
+        lightbox.className = 'lightbox';
+        lightbox.innerHTML = '<img>';
+        document.body.appendChild(lightbox);
+        document.querySelectorAll('.report-screenshot img').forEach(img => {
+            img.addEventListener('click', () => {
+                lightbox.querySelector('img').src = img.src;
+                lightbox.classList.add('active');
+            });
+        });
+        lightbox.addEventListener('click', () => lightbox.classList.remove('active'));
     </script>
 </body>
 </html>

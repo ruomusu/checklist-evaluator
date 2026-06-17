@@ -53,6 +53,8 @@ class ReportGenerator:
                      f"⚠️ Satisfactory (75%-89%) {report.satisfactory_count} ({sat_pct}%) | "
                      f"❌ Fail (<75%) {report.fail_count} ({fail_pct}%)")
         lines.append("")
+        lines.append("评级标准：Excellent ≥ 90% | Satisfactory 75%-89% | Fail < 75%")
+        lines.append("")
         lines.append("---")
         lines.append("")
 

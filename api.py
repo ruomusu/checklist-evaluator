@@ -17,6 +17,7 @@ from typing import Optional, AsyncGenerator
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Body, Depends
 from fastapi.responses import PlainTextResponse, HTMLResponse, StreamingResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config import Config
@@ -40,6 +41,9 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# 挂载静态文件（图片等）
+app.mount("/assets", StaticFiles(directory=Path(__file__).parent / "assets"), name="assets")
 
 
 # ============================================================
