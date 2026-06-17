@@ -44,10 +44,14 @@ class ReportGenerator:
         lines.append(f"# Checklist 评估报告 — {report.student_name}")
         lines.append("")
         lines.append(f"评估时间: {datetime.now(_BJT).strftime('%Y-%m-%d %H:%M')}")
+        total = report.total_questions or 1
+        exc_pct = round(report.excellent_count / total * 100)
+        sat_pct = round(report.satisfactory_count / total * 100)
+        fail_pct = round(report.fail_count / total * 100)
         lines.append(f"总计 {report.total_questions} 题 | "
-                     f"✅ Excellent (85%+) {report.excellent_count} | "
-                     f"⚠️ Satisfactory (60%-84%) {report.satisfactory_count} | "
-                     f"❌ Fail (<60%) {report.fail_count}")
+                     f"✅ Excellent (85%+) {report.excellent_count} ({exc_pct}%) | "
+                     f"⚠️ Satisfactory (60%-84%) {report.satisfactory_count} ({sat_pct}%) | "
+                     f"❌ Fail (<60%) {report.fail_count} ({fail_pct}%)")
         lines.append("")
         lines.append("---")
         lines.append("")
