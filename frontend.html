@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>Checklist 自动评估系统</title>
+    <script>
+        // 检查登录状态
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+    </script>
+    <style>
+        :root {
+            --excellent: #34c759;
+            --excellent-bg: #f0faf3;
+            --satisfactory: #f5a623;
+            --satisfactory-bg: #fef9f0;
+            --fail: #ff6b6b;
+            --fail-bg: #fff5f5;
+            --primary: #0071e3;
+            --primary-hover: #0060c0;
+            --bg: #fbfbfd;
+            --card-bg: #ffffff;
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: #e8e8ed;
+            --shadow: 0 4px 24px rgba(0,0,0,0.06);
+            --shadow-sm: 0 2px 12px rgba(0,0,0,0.04);
+            --radius: 16px;
+            --radius-sm: 12px;
+            --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif;
+            --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 60px 24px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { width: 100%; max-width: 750px; margin: 0 auto; }
+
+        /* Header */
+        .header { text-align: center; margin-bottom: 48px; }
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+        .header p { font-size: 1.05rem; color: var(--text-secondary); font-weight: 400; letter-spacing: 0.2px; }
+
+        /* Service Switcher */
+        .switcher {
+            display: inline-flex;
+            background: #f2f2f7;
+            border-radius: var(--radius-sm);
+            padding: 4px;
+            margin-bottom: 32px;
+        }
+        .switcher-row { display: flex; justify-content: center; margin-bottom: 28px; }
+        .switcher button {
+            padding: 10px 28px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            letter-spacing: 0.3px;
+        }
+        .switcher button.active {
+            background: var(--card-bg);
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .switcher button:hover:not(.active) { color: var(--text); }
+
+        /* Name Row */
+        .name-row {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 28px;
+        }
+        .name-row label { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+        .name-row input {
+            flex: 1; padding: 12px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            background: var(--card-bg);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .name-row input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
+        .name-row select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
+        .name-row button:hover { background: var(--primary-hover); }
+        .name-row button:disabled { background: #d1d1d6; cursor: not-allowed; }
+
+        /* Mode Switcher (smaller) */
+        .mode-switcher { margin-bottom: 24px; }
+        .mode-switcher .switcher { padding: 3px; }
+        .mode-switcher .switcher button { padding: 8px 20px; font-size: 0.85rem; }
+
+        /* File Upload */
+        .file-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 48px 32px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            border: 2px dashed var(--border);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            margin-bottom: 24px;
+        }
+        .file-card:hover { border-color: var(--primary); background: #f8fbff; }
+        .file-card.has-file { border-color: var(--excellent); background: var(--excellent-bg); }
+        .file-card input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .file-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .file-card .text { color: var(--text-secondary); font-size: 0.92rem; }
+        .file-card .filename { color: var(--excellent); font-weight: 600; font-size: 0.95rem; }
+
+        /* Question Cards */
+        .questions-container { animation: fadeIn 0.3s ease; }
+        .question-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            animation: slideUp 0.3s ease backwards;
+        }
+        .question-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+        .question-card .q-title {
+            font-size: 0.92rem; font-weight: 600; color: var(--text);
+            margin-bottom: 12px; line-height: 1.5; letter-spacing: 0.1px;
+        }
+        .question-card .q-id { color: var(--primary); font-weight: 700; }
+        .question-card textarea {
+            width: 100%; min-height: 90px; padding: 14px 16px;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 0.9rem; line-height: 1.6; resize: vertical;
+            font-family: var(--font); background: #fafafa;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        .question-card textarea:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.1); background: var(--card-bg);
+        }
+        .question-card textarea::placeholder { color: #c7c7cc; }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%; padding: 16px;
+            background: var(--primary); color: #fff;
+            border: none; border-radius: var(--radius-sm);
+            font-size: 1.05rem; font-weight: 600;
+            cursor: pointer; letter-spacing: 0.3px;
+            transition: background 0.2s, transform 0.15s;
+        }
+        .submit-btn:hover { background: var(--primary-hover); }
+        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn:disabled { background: #d1d1d6; cursor: not-allowed; transform: none; }
+
+        /* Progress */
+        .status-bar { display: none; text-align: center; padding: 48px 0; animation: fadeIn 0.3s ease; }
+        .status-bar.active { display: block; }
+        .progress-track {
+            width: 100%; max-width: 440px; margin: 0 auto 20px;
+            background: #f2f2f7; border-radius: 20px; height: 8px; overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--primary), #5ac8fa);
+            border-radius: 20px; transition: width 0.6s ease;
+        }
+        .progress-pct { color: var(--primary); font-weight: 700; font-size: 1.4rem; margin-bottom: 12px; letter-spacing: -0.5px; }
+        .progress-msg { color: var(--text-secondary); font-size: 0.92rem; }
+
+        /* Result */
+        .result-card {
+            display: none; background: var(--card-bg);
+            border-radius: var(--radius); padding: 36px 32px;
+            box-shadow: var(--shadow); margin-top: 32px;
+            animation: slideUp 0.4s ease;
+        }
+        .result-card.active { display: block; }
+        .result-content {
+            font-family: var(--mono); font-size: 0.86rem; line-height: 1.8;
+            white-space: pre-wrap; word-break: break-word; color: #2c3e50;
+            min-height: 80px; letter-spacing: 0.2px;
+        }
+        /* 分组区块颜色标记 */
+        .result-content .section-excellent { margin: 24px 0; }
+        .result-content .section-satisfactory { margin: 24px 0; }
+        .result-content .section-fail { margin: 24px 0; }
+        .result-content .question-block-excellent { border-left: 4px solid var(--excellent); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--excellent-bg); }
+        .result-content .question-block-satisfactory { border-left: 4px solid var(--satisfactory); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--satisfactory-bg); }
+        .result-content .question-block-fail { border-left: 4px solid var(--fail); padding: 16px 16px 16px 20px; margin: 20px 0; border-radius: 10px; background: var(--fail-bg); }
+        /* Excellent 折叠面板 */
+        .result-content details.excellent-panel {
+            border: 1.5px solid var(--excellent); border-radius: 12px;
+            background: var(--excellent-bg); margin: 20px 0; overflow: hidden;
+        }
+        .result-content details.excellent-panel summary {
+            padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            color: #1a7a3a; list-style: none; display: flex; align-items: center; gap: 8px;
+        }
+        .result-content details.excellent-panel summary::before { content: '▶'; font-size: 0.7rem; transition: transform 0.3s ease; }
+        .result-content details.excellent-panel[open] summary::before { transform: rotate(90deg); }
+        .result-content details.excellent-panel .panel-content { padding: 0 20px 16px; }
+        /* Satisfactory 折叠面板 */
+        .result-content details.satisfactory-panel {
+            border: 1.5px solid var(--satisfactory); border-radius: 12px;
+            background: var(--satisfactory-bg); margin: 20px 0; overflow: hidden;
+        }
+        .result-content details.satisfactory-panel summary {
+            padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            color: #8a5e00; list-style: none; display: flex; align-items: center; gap: 8px;
+        }
+        .result-content details.satisfactory-panel summary::before { content: '▶'; font-size: 0.7rem; transition: transform 0.3s ease; }
+        .result-content details.satisfactory-panel[open] summary::before { transform: rotate(90deg); }
+        .result-content details.satisfactory-panel .panel-content { padding: 0 20px 16px; }
+        /* Fail 折叠面板 */
+        .result-content details.fail-panel {
+            border: 1.5px solid var(--fail); border-radius: 12px;
+            background: var(--fail-bg); margin: 20px 0; overflow: hidden;
+        }
+        .result-content details.fail-panel summary {
+            padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            color: #a83232; list-style: none; display: flex; align-items: center; gap: 8px;
+        }
+        .result-content details.fail-panel summary::before { content: '▶'; font-size: 0.7rem; transition: transform 0.3s ease; }
+        .result-content details.fail-panel[open] summary::before { transform: rotate(90deg); }
+        .result-content details.fail-panel .panel-content { padding: 0 20px 16px; }
+        /* 推荐阅读折叠面板 */
+        .result-content details.reading-panel {
+            border: 1.5px solid var(--primary); border-radius: 12px;
+            background: #f0f7ff; margin: 24px 0; overflow: hidden;
+        }
+        .result-content details.reading-panel summary {
+            padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            color: var(--primary); list-style: none; display: flex; align-items: center; gap: 8px;
+        }
+        .result-content details.reading-panel summary::before { content: '▶'; font-size: 0.7rem; transition: transform 0.3s ease; }
+        .result-content details.reading-panel[open] summary::before { transform: rotate(90deg); }
+        .result-content details.reading-panel .panel-content { padding: 0 20px 16px; }
+        .result-content .reading-card {
+            background: #fff; border-radius: 10px; padding: 14px 18px; margin: 10px 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid var(--border);
+        }
+        .result-content .reading-card strong { font-size: 0.88rem; color: var(--text); }
+        .result-content .reading-card .res-link { color: var(--text-secondary); font-size: 0.82rem; margin-top: 6px; display: block; }
+        .cursor { display: inline-block; width: 2px; height: 1.1em; background: var(--primary); animation: blink 0.7s step-end infinite; vertical-align: text-bottom; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Error */
+        .error-msg {
+            display: none; background: var(--fail-bg); border: 1.5px solid #ffd4d4;
+            border-radius: var(--radius-sm); padding: 16px 20px; margin-top: 16px;
+            color: var(--fail); font-size: 0.9rem; font-weight: 500;
+            animation: fadeIn 0.3s ease;
+        }
+        .error-msg.active { display: block; }
+
+        /* Buttons row */
+        .btn-row { display: flex; gap: 12px; margin-top: 24px; }
+        .btn-secondary {
+            padding: 12px 28px; border: none; border-radius: var(--radius-sm);
+            cursor: pointer; font-size: 0.9rem; font-weight: 500;
+            transition: all 0.2s; letter-spacing: 0.2px;
+        }
+        .btn-reset { background: #f2f2f7; color: var(--text-secondary); }
+        .btn-reset:hover { background: #e8e8ed; color: var(--text); }
+        .btn-download { background: var(--primary); color: #fff; }
+        .btn-download:hover { background: var(--primary-hover); }
+
+        .loading-msg { text-align: center; padding: 48px; color: var(--text-secondary); font-size: 0.92rem; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 报告头部样式 */
+        .report-header {
+            text-align: center;
+            padding: 28px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+        .report-header h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .report-header .time { font-size: 0.82rem; opacity: 0.8; margin-bottom: 16px; }
+        .report-header .stats {
+            display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;
+        }
+        .report-header .stat-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+            border-radius: 20px; padding: 6px 14px; font-size: 0.82rem; font-weight: 600;
+        }
+        /* 侧边题号导航 */
+        .side-nav {
+            display: none;
+            position: fixed;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 160px;
+            max-height: 70vh;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            padding: 16px 12px;
+            z-index: 1000;
+            animation: fadeIn 0.4s ease;
+        }
+        .side-nav.active { display: block; }
+        .side-nav h4 { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .side-nav .nav-section { margin-bottom: 12px; }
+        .side-nav .nav-section-title { font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+        .side-nav .nav-item {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .side-nav .nav-item:hover { transform: scale(1.1); }
+        .side-nav .nav-item.excellent { background: var(--excellent-bg); color: #1a7a3a; border: 1px solid var(--excellent); }
+        .side-nav .nav-item.satisfactory { background: var(--satisfactory-bg); color: #8a5e00; border: 1px solid var(--satisfactory); }
+        .side-nav .nav-item.fail { background: var(--fail-bg); color: #a83232; border: 1px solid var(--fail); }
+        @media (max-width: 1100px) { .side-nav { display: none !important; } }
+
+        /* 历史记录侧边栏 */
+        .history-sidebar {
+            position: fixed;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 170px;
+            max-height: 65vh;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            padding: 14px 10px;
+            z-index: 1000;
+            animation: fadeIn 0.4s ease;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .history-sidebar.collapsed {
+            transform: translateY(-50%) translateX(-150px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .history-toggle {
+            position: fixed;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 48px;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 0 10px 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+        .history-toggle:hover { background: #fff; }
+        .history-toggle.expanded { left: 192px; }
+        .history-sidebar h4 { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .history-item {
+            padding: 10px 12px; margin-bottom: 8px; border-radius: 10px;
+            background: #fff; border: 1px solid var(--border); cursor: pointer;
+            transition: all 0.2s; font-size: 0.78rem; position: relative;
+        }
+        .history-item:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .history-item.highlighted {
+            border-color: #ffd700; background: linear-gradient(135deg, #fffef0, #fff9e0);
+            box-shadow: 0 2px 12px rgba(255,215,0,0.2);
+        }
+        .history-item .badge-highlight {
+            position: absolute; top: -4px; right: -4px;
+            background: #ffd700; color: #333; font-size: 0.6rem; font-weight: 700;
+            padding: 2px 6px; border-radius: 8px;
+        }
+        .history-item .h-service { font-weight: 600; color: var(--text); }
+        .history-item .h-time { color: var(--text-secondary); font-size: 0.7rem; margin-top: 2px; }
+        .highlight-btn {
+            padding: 10px 20px; border: 2px solid #ffd700; border-radius: 8px;
+            background: linear-gradient(135deg, #fffef0, #fff9e0); color: #8a6d00;
+            font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+        }
+        .highlight-btn:hover { background: #ffd700; color: #333; }
+        @media (max-width: 1000px) { .history-sidebar { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Checklist 自动评估系统</h1>
+            <p>选择服务，上传作答文件或逐题输入，获取智能评估报告</p>
+            <div style="margin-top: 16px;">
+                <span id="userDisplay" style="font-size: 14px; color: #666;"></span>
+                <button id="logoutBtn" style="margin-left: 12px; padding: 6px 16px; border: 1px solid #e0e0e0; background: white; border-radius: 6px; cursor: pointer; font-size: 13px;">退出登录</button>
+            </div>
+        </div>
+
+        <div id="mainPanel">
+            <!-- 服务切换 -->
+            <div class="switcher-row">
+                <div class="switcher" id="serviceSwitcher"></div>
+            </div>
+
+            <!-- 姓名 -->
+            <div class="name-row">
+                <label for="studentName">姓名</label>
+                <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                    <input type="text" id="studentName" placeholder="请输入姓名" style="flex: 1;">
+                    <select id="userSelect" style="display: none; min-width: 180px; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 0.95rem; background: var(--card-bg);">
+                        <option value="">选择用户...</option>
+                    </select>
+                    <button id="loadHistoryBtn" style="display: none; padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 0.2s;">查看记录</button>
+                </div>
+            </div>
+            
+            <!-- 管理员当前查看用户指示器 -->
+            <div id="currentUserIndicator" style="display: none; background: linear-gradient(135deg, #e3f2fd, #f0f8ff); border: 1px solid #2196f3; border-radius: var(--radius-sm); padding: 8px 16px; margin-bottom: 16px; font-size: 0.85rem; color: #1976d2;">
+                <span style="font-weight: 600;">👁️ 当前查看：</span><span id="currentUserName"></span>
+            </div>
+
+            <!-- 输入模式切换 -->
+            <div class="mode-switcher">
+                <div class="switcher" id="modeSwitcher">
+                    <button class="active" data-mode="file" onclick="switchMode('file',this)">上传文件</button>
+                    <button data-mode="questions" onclick="switchMode('questions',this)">逐题输入</button>
+                </div>
+            </div>
+
+            <!-- 文件上传 -->
+            <div id="fileMode">
+                <div class="file-card" id="fileCard">
+                    <input type="file" id="fileInput" accept=".md,.txt,.text,.markdown,.docx">
+                    <div class="icon">📄</div>
+                    <div id="fileText" class="text">点击或拖拽上传答卷文件<br><small style="color:#aaa;">支持 .md / .txt / .docx</small></div>
+                </div>
+            </div>
+
+            <!-- 逐题输入 -->
+            <div id="questionsMode" style="display:none;">
+                <div class="questions-container" id="questionsList">
+                    <div class="loading-msg">加载题目中...</div>
+                </div>
+            </div>
+
+            <button class="submit-btn" id="submitBtn">开始评估</button>
+        </div>
+
+        <!-- 进度 -->
+        <div class="status-bar" id="statusBar">
+            <div class="progress-pct" id="progressPercent">0%</div>
+            <div class="progress-track"><div class="progress-bar" id="progressFill"></div></div>
+            <div class="progress-msg" id="statusText">准备中...</div>
+        </div>
+
+        <!-- 错误 -->
+        <div class="error-msg" id="errorMsg"></div>
+
+        <!-- 历史记录侧边栏 -->
+        <div class="history-toggle expanded" id="historyToggle" onclick="toggleHistorySidebar()">◀</div>
+        <div class="history-sidebar" id="historySidebar">
+            <h4>🌟 高光记录</h4>
+            <div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">输入姓名后显示</div>
+            <h4 style="margin-top:12px;">🕒 历史记录</h4>
+            <div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">输入姓名后显示</div>
+        </div>
+
+        <!-- 侧边导航 -->
+        <div class="side-nav" id="sideNav"></div>
+
+        <!-- 结果 -->
+        <div class="result-card" id="resultCard">
+            <div class="result-content" id="resultContent"></div>
+            <div class="btn-row">
+                <button class="btn-secondary btn-reset" id="resetBtn">重新评估</button>
+                <button class="highlight-btn" id="highlightBtn">⭐ 高光保存</button>
+                <button class="btn-secondary btn-download" id="downloadBtn">下载报告</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const serviceSwitcher = document.getElementById('serviceSwitcher');
+        const questionsList = document.getElementById('questionsList');
+        const submitBtn = document.getElementById('submitBtn');
+        const mainPanel = document.getElementById('mainPanel');
+        const statusBar = document.getElementById('statusBar');
+        const statusText = document.getElementById('statusText');
+        const progressFill = document.getElementById('progressFill');
+        const progressPercent = document.getElementById('progressPercent');
+        const resultCard = document.getElementById('resultCard');
+        const resultContent = document.getElementById('resultContent');
+        const errorMsg = document.getElementById('errorMsg');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // 显示用户信息
+        const username = localStorage.getItem('username') || '用户';
+        const role = localStorage.getItem('role') || 'user';
+        document.getElementById('userDisplay').textContent = `👤 ${username} (${role === 'admin' ? '管理员' : '用户'})`;
+
+        // 退出登录
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            localStorage.removeItem('role');
+            window.location.href = '/login.html';
+        });
+        const studentName = document.getElementById('studentName');
+        const fileInput = document.getElementById('fileInput');
+        const fileCard = document.getElementById('fileCard');
+        const fileText = document.getElementById('fileText');
+
+        let currentService = '';
+        let currentMode = 'file';
+        let questions = [];
+
+        function switchMode(mode, btn) {
+            currentMode = mode;
+            document.querySelectorAll('#modeSwitcher button').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('questionsMode').style.display = mode === 'questions' ? 'block' : 'none';
+            document.getElementById('fileMode').style.display = mode === 'file' ? 'block' : 'none';
+        }
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                fileCard.classList.add('has-file');
+                fileText.innerHTML = '<span class="filename">' + this.files[0].name + '</span>';
+            }
+        });
+
+        async function loadServices() {
+            try {
+                const resp = await fetch('/api/services');
+                const services = await resp.json();
+                serviceSwitcher.innerHTML = '';
+                services.forEach((svc, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = idx === 0 ? 'active' : '';
+                    btn.textContent = svc.name;
+                    btn.dataset.id = svc.id;
+                    btn.addEventListener('click', () => {
+                        currentService = svc.id;
+                        document.querySelectorAll('#serviceSwitcher button').forEach(t => t.classList.remove('active'));
+                        btn.classList.add('active');
+                        loadQuestions(svc.id);
+                        // 切换服务时清除旧报告和导航
+                        resultCard.classList.remove('active');
+                        resultContent.textContent = '';
+                        document.getElementById('sideNav').classList.remove('active');
+                        document.getElementById('highlightBtn').textContent = '⭐ 高光保存';
+                        lastReportMarkdown = '';
+                        lastSortKey = '';
+                        // 清除文件上传状态
+                        fileInput.value = '';
+                        fileCard.classList.remove('has-file');
+                        fileText.innerHTML = '点击或拖拽上传答卷文件<br><small style="color:#aaa;">支持 .md / .txt / .docx</small>';
+                    });
+                    serviceSwitcher.appendChild(btn);
+                });
+                if (services.length > 0) { currentService = services[0].id; loadQuestions(currentService); }
+            } catch(e) {
+                document.getElementById('mainPanel').innerHTML = '<div style="text-align:center;padding:40px;color:#ff6b6b;">加载服务列表失败: ' + e.message + '</div>';
+            }
+        }
+
+        async function loadQuestions(serviceId) {
+            questionsList.innerHTML = '<div class="loading-msg">加载题目中...</div>';
+            try {
+                const resp = await fetch('/api/questions/' + serviceId);
+                questions = await resp.json();
+                questionsList.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const card = document.createElement('div');
+                    card.className = 'question-card';
+                    card.style.animationDelay = (i * 0.05) + 's';
+                    card.innerHTML = '<div class="q-title"><span class="q-id">' + q.question_id + '</span>: ' + q.question + '</div>' +
+                        '<textarea data-qid="' + q.question_id + '" placeholder="在此输入答案（可留空跳过）"></textarea>';
+                    questionsList.appendChild(card);
+                });
+                if (questions.length === 0) {
+                    questionsList.innerHTML = '<div class="loading-msg">该服务暂无题目</div>';
+                }
+            } catch(e) {
+                questionsList.innerHTML = '<div class="loading-msg" style="color:var(--fail);">题目加载失败: ' + e.message + '</div>';
+            }
+        }
+
+        submitBtn.addEventListener('click', async function() {
+            let requestBody;
+            if (currentMode === 'questions') {
+                const answers = [];
+                document.querySelectorAll('.question-card textarea').forEach(ta => {
+                    const text = ta.value.trim();
+                    if (text) answers.push({ question_id: ta.dataset.qid, answer_text: text });
+                });
+                if (answers.length === 0) { showError('请至少回答一道题目'); return; }
+                requestBody = { service_type: currentService, student_name: studentName.value || '新人', answers };
+            } else {
+                const file = fileInput.files[0];
+                if (!file) { showError('请先选择文件'); return; }
+                const text = await file.text();
+                const pattern = /##\s*(Q?\d+)\s*\n([\s\S]*?)(?=\n##\s*Q?\d+|$)/g;
+                const answers = [];
+                let match;
+                while ((match = pattern.exec(text)) !== null) {
+                    let qid = match[1]; if (!qid.startsWith('Q')) qid = 'Q' + qid;
+                    answers.push({ question_id: qid, answer_text: match[2].trim() });
+                }
+                if (answers.length === 0) {
+                    const paragraphs = text.split('\n\n').filter(p => p.trim());
+                    paragraphs.forEach((p, i) => answers.push({ question_id: 'Q' + (i+1), answer_text: p.trim() }));
+                }
+                if (answers.length === 0) { showError('无法从文件中解析出答案'); return; }
+                requestBody = { service_type: currentService, student_name: studentName.value || '新人', answers };
+            }
+
+            mainPanel.style.display = 'none';
+            statusBar.classList.add('active');
+            errorMsg.classList.remove('active');
+            resultCard.classList.remove('active');
+            resultContent.textContent = '';
+
+            let progressTimer, stepIdx = 0;
+            const steps = [
+                {pct:5,msg:'上传中...'},{pct:15,msg:'加载知识库...'},{pct:30,msg:'分析第 1 题...'},
+                {pct:45,msg:'分析第 2 题...'},{pct:55,msg:'分析第 3 题...'},{pct:65,msg:'综合评估...'},
+                {pct:80,msg:'生成报告...'},{pct:90,msg:'即将完成...'}
+            ];
+            function setProgress(p,m){progressFill.style.width=p+'%';progressPercent.textContent=p+'%';if(m)statusText.textContent=m;}
+            setProgress(steps[0].pct, steps[0].msg);
+            progressTimer = setInterval(()=>{stepIdx++;if(stepIdx<steps.length)setProgress(steps[stepIdx].pct,steps[stepIdx].msg);},3000);
+            function stopProgress(){if(progressTimer){clearInterval(progressTimer);progressTimer=null;}setProgress(100,'完成');}
+
+            try {
+                const response = await fetch('/evaluate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(requestBody) });
+                if (!response.ok) { stopProgress(); statusBar.classList.remove('active'); let d='评估出错'; try{const e=await response.json();d=e.detail||d;}catch(e){} showError(d); mainPanel.style.display='block'; return; }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let sseBuffer='', reportBuffer='', reportStarted=false;
+                while(true){
+                    const{done,value}=await reader.read(); if(done)break;
+                    sseBuffer+=decoder.decode(value,{stream:true});
+                    const messages=sseBuffer.split('\n\n'); sseBuffer=messages.pop();
+                    for(const msg of messages){
+                        if(!msg.trim())continue;
+                        let ev='message',data='';
+                        for(const line of msg.split('\n')){if(line.startsWith('event: '))ev=line.slice(7);else if(line.startsWith('data: '))data=line.slice(6);}
+                        if(ev==='progress'){statusText.textContent=data;}
+                        else if(ev==='content'){
+                            if(!reportStarted){reportStarted=true;stopProgress();statusBar.classList.remove('active');resultCard.classList.add('active');}
+                            const l=(data===' ')?'':data; reportBuffer+=(reportBuffer?'\n':'')+l;
+                            resultContent.textContent=reportBuffer;
+                            const c=document.createElement('span');c.className='cursor';resultContent.appendChild(c);
+                            resultCard.scrollTop=resultCard.scrollHeight;
+                        }else if(ev==='done'){stopProgress();statusBar.classList.remove('active');lastReportMarkdown=reportBuffer;lastSortKey=data;renderReport(reportBuffer);loadHistory(studentName.value||'新人');document.getElementById('highlightBtn').textContent='⭐ 高光保存';}
+                    }
+                }
+                statusBar.classList.remove('active');
+                if(reportBuffer){lastReportMarkdown=reportBuffer;renderReport(reportBuffer);resultCard.classList.add('active');loadHistory(studentName.value||'新人');}
+            } catch(e) { stopProgress(); statusBar.classList.remove('active'); showError('网络连接失败'); mainPanel.style.display='block'; }
+        });
+
+        function showError(msg){ errorMsg.textContent=msg; errorMsg.classList.add('active'); }
+
+        resetBtn.addEventListener('click', function(){
+            resultCard.classList.remove('active'); mainPanel.style.display='block'; resultContent.textContent=''; errorMsg.classList.remove('active');
+            document.getElementById('sideNav').classList.remove('active');
+            document.getElementById('highlightBtn').textContent = '⭐ 高光保存';
+            lastReportMarkdown = '';
+            lastSortKey = '';
+        });
+        downloadBtn.addEventListener('click', function(){
+            const content=resultContent.textContent; if(!content)return;
+            const name=studentName.value||'新人';
+            const blob=new Blob([content],{type:'text/markdown;charset=utf-8'});
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement('a');a.href=url;a.download='评估报告_'+name+'_'+new Date().toISOString().slice(0,10)+'.md';
+            document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+        });
+
+        // 高光保存（toggle 当前报告的高光状态）
+        let lastReportMarkdown = '';
+        let lastSortKey = ''; // 当前报告在 DynamoDB 中的 sort key
+        let lastReportUser = ''; // 当前报告的用户名
+        document.getElementById('highlightBtn').addEventListener('click', async function(){
+            // 对于管理员，使用报告对应的用户名；对于普通用户，使用当前登录用户名
+            const currentRole = localStorage.getItem('role');
+            let targetUser;
+            if (currentRole === 'admin' && lastReportUser) {
+                targetUser = lastReportUser;
+            } else {
+                targetUser = studentName.value || localStorage.getItem('username');
+            }
+            if (!targetUser || !lastReportMarkdown) return;
+
+            // 如果有 sortKey，toggle 已有记录
+            if (lastSortKey) {
+                try {
+                    const resp = await fetch('/api/toggle-highlight', {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ trainee_name: targetUser, service_timestamp: lastSortKey })
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data.is_highlighted) {
+                            this.textContent = '⭐ 已高光（再次点击取消）';
+                        } else {
+                            this.textContent = '⭐ 高光保存';
+                        }
+                        loadHistory(studentName.value || localStorage.getItem('username'));
+                    }
+                } catch(e) {}
+            }
+        });
+
+        // 历史记录加载与渲染
+        let historyList = [];
+        async function loadHistory(name) {
+            if (!name) return;
+            const currentRole = localStorage.getItem('role');
+            const token = localStorage.getItem('token');
+            
+            try {
+                let endpoint;
+                const headers = {
+                    'Authorization': 'Bearer ' + token
+                };
+                
+                if (currentRole === 'admin') {
+                    // 管理员加载所有用户的记录
+                    endpoint = '/api/admin/all-history';
+                } else {
+                    // 普通用户只加载自己的记录
+                    endpoint = '/api/history/' + encodeURIComponent(name);
+                }
+                
+                const resp = await fetch(endpoint, { headers });
+                if (!resp.ok) {
+                    if (resp.status === 401 || resp.status === 403) {
+                        // 权限问题，可能需要重新登录
+                        console.warn('权限验证失败');
+                        return;
+                    }
+                    return;
+                }
+                
+                if (currentRole === 'admin') {
+                    const data = await resp.json();
+                    historyList = data.status === 'ok' ? data.items : [];
+                } else {
+                    historyList = await resp.json();
+                }
+                
+                renderHistorySidebar();
+            } catch(e) {
+                console.error('加载历史记录失败:', e);
+            }
+        }
+
+        function renderHistorySidebar() {
+            const sidebar = document.getElementById('historySidebar');
+            const currentRole = localStorage.getItem('role');
+            
+            if (historyList.length === 0) {
+                const emptyMessage = currentRole === 'admin' ? 
+                    '<h4>🌟 高光记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 全部历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>' :
+                    '<h4>🌟 高光记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div><h4 style="margin-top:12px;">🕒 历史记录</h4><div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无记录</div>';
+                sidebar.innerHTML = emptyMessage;
+                return;
+            }
+
+            let h = '<h4>🌟 高光记录</h4>';
+            const highlighted = historyList.filter(i => i.is_highlighted);
+            
+            if (currentRole === 'admin') {
+                // 管理员：按用户分组显示高光记录
+                if (highlighted.length > 0) {
+                    const groupedHighlights = groupByUser(highlighted);
+                    Object.keys(groupedHighlights).sort().forEach(username => {
+                        h += '<div style="font-size:0.7rem;color:#666;margin:8px 0 4px;font-weight:600;">👤 ' + username + '</div>';
+                        groupedHighlights[username].forEach(item => {
+                            h += renderHistoryItem(item, true);
+                        });
+                    });
+                } else {
+                    h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无高光记录</div>';
+                }
+                
+                h += '<h4 style="margin-top:16px;">🕒 全部历史记录</h4>';
+                const groupedHistory = groupByUser(historyList);
+                Object.keys(groupedHistory).sort().forEach(username => {
+                    h += '<div style="font-size:0.7rem;color:#666;margin:8px 0 4px;font-weight:600;">👤 ' + username + '</div>';
+                    // 按时间倒序排列每个用户的记录
+                    const sortedItems = groupedHistory[username].sort((a, b) => 
+                        new Date(b.created_at) - new Date(a.created_at)
+                    );
+                    sortedItems.forEach(item => {
+                        h += renderHistoryItem(item, true);
+                    });
+                });
+            } else {
+                // 普通用户：正常显示
+                if (highlighted.length > 0) {
+                    highlighted.forEach(item => { h += renderHistoryItem(item, false); });
+                } else {
+                    h += '<div style="font-size:0.75rem;color:#aaa;padding:4px 8px;">暂无高光记录</div>';
+                }
+                
+                h += '<h4 style="margin-top:16px;">🕒 我的历史记录</h4>';
+                historyList.forEach(item => { h += renderHistoryItem(item, false); });
+            }
+
+            sidebar.innerHTML = h;
+
+            // 绑定点击事件
+            sidebar.querySelectorAll('.history-item').forEach(el => {
+                el.addEventListener('click', function() {
+                    const data = decodeURIComponent(this.dataset.report || '');
+                    if (data) {
+                        renderReport(data);
+                        resultCard.classList.add('active');
+                        lastSortKey = this.dataset.sk || '';
+                        lastReportMarkdown = data;
+                        lastReportUser = this.dataset.user || ''; // 记录报告对应的用户名
+                        const isH = this.dataset.highlighted === 'true';
+                        document.getElementById('highlightBtn').textContent = isH ? '⭐ 已高光（再次点击取消）' : '⭐ 高光保存';
+                    }
+                });
+            });
+        }
+
+        function groupByUser(items) {
+            return items.reduce((groups, item) => {
+                const user = item.trainee_name;
+                if (!groups[user]) {
+                    groups[user] = [];
+                }
+                groups[user].push(item);
+                return groups;
+            }, {});
+        }
+
+        function renderHistoryItem(item, showUser = false) {
+            const cls = item.is_highlighted ? 'history-item highlighted' : 'history-item';
+            const badge = item.is_highlighted ? '<span class="badge-highlight">⭐</span>' : '';
+            const report = encodeURIComponent(item.report_data || '');
+            const userLabel = showUser ? '' : ''; // 用户名已经在分组标题中显示
+            return '<div class="' + cls + '" data-report="' + report + '" data-sk="' + (item.service_timestamp||'') + '" data-highlighted="' + (item.is_highlighted||false) + '" data-user="' + (item.trainee_name||'') + '">' +
+                badge + '<div class="h-service">' + (item.service_type || '') + '</div>' +
+                '<div class="h-time">' + (item.created_at || '') + '</div></div>';
+        }
+
+        function renderReport(text) {
+            let html = '';
+            const lines = text.split('\n');
+            let currentSection = '';
+            let questionBuffer = [];
+            let excellentContent = [];
+            let excellentTitle = '✅ Excellent 优秀区';
+            let satisfactoryContent = [];
+            let satisfactoryTitle = '⚠️ Satisfactory 提示区';
+            let failContent = [];
+            let failTitle = '❌ Fail 警示区';
+            let readingContent = [];
+            let navData = { excellent: [], satisfactory: [], fail: [] };
+
+            function flushReading() {
+                if (readingContent.length === 0) return;
+                html += '<details class="reading-panel"><summary>📚 推荐阅读与提升指南（点击展开获取针对性复习资料）</summary><div class="panel-content">' + readingContent.join('') + '</div></details>';
+                readingContent = [];
+            }
+
+            function flushExcellent() {
+                if (excellentContent.length === 0) return;
+                html += '<details class="excellent-panel"><summary>' + escapeHtml(excellentTitle) + '（点击展开查看）</summary><div class="panel-content">' + excellentContent.join('') + '</div></details>';
+                excellentContent = [];
+            }
+
+            function flushSatisfactory() {
+                if (satisfactoryContent.length === 0) return;
+                html += '<details class="satisfactory-panel" open><summary>' + escapeHtml(satisfactoryTitle) + '</summary><div class="panel-content">' + satisfactoryContent.join('') + '</div></details>';
+                satisfactoryContent = [];
+            }
+
+            function flushFail() {
+                if (failContent.length === 0) return;
+                html += '<details class="fail-panel" open><summary>' + escapeHtml(failTitle) + '</summary><div class="panel-content">' + failContent.join('') + '</div></details>';
+                failContent = [];
+            }
+
+            function flushQuestion() {
+                if (questionBuffer.length === 0) return;
+                const content = questionBuffer.join('\n').trim();
+                if (!content) { questionBuffer = []; return; }
+                const qidMatch = content.match(/\*\*(Q\d+)/);
+                const qid = qidMatch ? qidMatch[1] : '';
+                const anchor = qid ? ' id="q-' + qid + '"' : '';
+                if (currentSection === 'excellent') {
+                    excellentContent.push('<div class="question-block-excellent"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    if (qid) navData.excellent.push(qid);
+                } else if (currentSection === 'satisfactory') {
+                    satisfactoryContent.push('<div class="question-block-satisfactory"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    if (qid) navData.satisfactory.push(qid);
+                } else if (currentSection === 'fail') {
+                    failContent.push('<div class="question-block-fail"' + anchor + '>' + escapeHtml(content) + '</div>');
+                    if (qid) navData.fail.push(qid);
+                } else if (currentSection === 'reading') {
+                    readingContent.push('<div class="reading-card">' + escapeHtml(content) + '</div>');
+                } else {
+                    html += escapeHtml(content) + '\n';
+                }
+                questionBuffer = [];
+            }
+
+            let headerDone = false;
+            let headerTitle = '';
+            let headerTime = '';
+            let headerStats = '';
+
+            for (const line of lines) {
+                // 解析报告头部
+                if (!headerDone) {
+                    if (line.startsWith('# ')) {
+                        headerTitle = line.replace('# ', '');
+                        continue;
+                    } else if (line.startsWith('评估时间')) {
+                        headerTime = line;
+                        continue;
+                    } else if (line.startsWith('总计')) {
+                        headerStats = line;
+                        continue;
+                    } else if (line === '---') {
+                        // 头部结束，渲染styled header
+                        headerDone = true;
+                        html += '<div class="report-header">';
+                        html += '<h2>' + escapeHtml(headerTitle) + '</h2>';
+                        html += '<div class="time">' + escapeHtml(headerTime) + '</div>';
+                        html += '<div class="stats">';
+                        // 解析统计数字
+                        const statParts = headerStats.split('|');
+                        statParts.forEach(p => {
+                            html += '<span class="stat-badge">' + escapeHtml(p.trim()) + '</span>';
+                        });
+                        html += '</div></div>';
+                        continue;
+                    } else if (!line.trim()) {
+                        continue;
+                    }
+                }
+
+                if (line.includes('Excellent 优秀区')) {
+                    flushQuestion(); currentSection = 'excellent';
+                    excellentTitle = line.replace('## ','');
+                } else if (line.includes('Satisfactory 提示区')) {
+                    flushQuestion(); flushExcellent(); currentSection = 'satisfactory';
+                    satisfactoryTitle = line.replace('## ','');
+                } else if (line.includes('Fail 警示区')) {
+                    flushQuestion(); flushSatisfactory(); currentSection = 'fail';
+                    failTitle = line.replace('## ','');
+                } else if (line.startsWith('**Q') && (line.includes('—') || currentSection === 'reading')) {
+                    flushQuestion();
+                    questionBuffer.push(line);
+                } else if (line === '···') {
+                    flushQuestion();
+                } else if (line.startsWith('---') || line.startsWith('### ')) {
+                    flushQuestion(); flushExcellent(); flushSatisfactory(); flushFail();
+                    if (line.includes('推荐阅读')) {
+                        currentSection = 'reading';
+                    } else {
+                        currentSection = '';
+                        html += escapeHtml(line) + '\n';
+                    }
+                } else {
+                    questionBuffer.push(line);
+                }
+            }
+            flushQuestion();
+            flushExcellent();
+            flushSatisfactory();
+            flushFail();
+            flushReading();
+            resultContent.innerHTML = html;
+            buildNavigation(navData);
+        }
+
+        function buildNavigation(data) {
+            const nav = document.getElementById('sideNav');
+            if (!data.excellent.length && !data.satisfactory.length && !data.fail.length) {
+                nav.classList.remove('active'); return;
+            }
+            let navHtml = '<h4>题号导航</h4>';
+            if (data.excellent.length) {
+                navHtml += '<div class="nav-section"><div class="nav-section-title">✅ Excellent</div>';
+                data.excellent.forEach(q => { navHtml += '<span class="nav-item excellent" data-qid="' + q + '">' + q + '</span>'; });
+                navHtml += '</div>';
+            }
+            if (data.satisfactory.length) {
+                navHtml += '<div class="nav-section"><div class="nav-section-title">⚠️ Satisfactory</div>';
+                data.satisfactory.forEach(q => { navHtml += '<span class="nav-item satisfactory" data-qid="' + q + '">' + q + '</span>'; });
+                navHtml += '</div>';
+            }
+            if (data.fail.length) {
+                navHtml += '<div class="nav-section"><div class="nav-section-title">❌ Fail</div>';
+                data.fail.forEach(q => { navHtml += '<span class="nav-item fail" data-qid="' + q + '">' + q + '</span>'; });
+                navHtml += '</div>';
+            }
+            nav.innerHTML = navHtml;
+            nav.classList.add('active');
+            // 点击导航项
+            nav.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const qid = this.dataset.qid;
+                    const target = document.getElementById('q-' + qid);
+                    if (!target) return;
+                    // 如果在折叠面板中，先展开
+                    const details = target.closest('details');
+                    if (details && !details.open) { details.open = true; }
+                    // 平滑滚动
+                    setTimeout(() => { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
+                });
+            });
+        }
+
+        function escapeHtml(text) {
+            let escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            // Convert Markdown links [title](url) to clickable <a> tags
+            escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:none;border-bottom:1px solid var(--primary);">$1</a>');
+            return escaped;
+        }
+
+        function toggleHistorySidebar() {
+            const sidebar = document.getElementById('historySidebar');
+            const toggle = document.getElementById('historyToggle');
+            if (sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+                toggle.classList.add('expanded');
+                toggle.textContent = '◀';
+            } else {
+                sidebar.classList.add('collapsed');
+                toggle.classList.remove('expanded');
+                toggle.textContent = '▶';
+            }
+        }
+
+        loadServices();
+        
+        // 根据用户角色初始化姓名输入框
+        const currentRole = localStorage.getItem('role');
+        const currentUsername = localStorage.getItem('username');
+        const userSelect = document.getElementById('userSelect');
+        const loadHistoryBtn = document.getElementById('loadHistoryBtn');
+        const currentUserIndicator = document.getElementById('currentUserIndicator');
+        const currentUserName = document.getElementById('currentUserName');
+        
+        // 更新当前查看用户指示器
+        function updateCurrentUserIndicator(username) {
+            if (currentRole === 'admin') {
+                currentUserIndicator.style.display = 'block';
+                currentUserName.textContent = username + (username === currentUsername ? '（自己）' : '');
+            }
+        }
+        
+        if (currentRole === 'admin') {
+            // 管理员：显示用户选择下拉框和提交按钮
+            studentName.placeholder = "输入用户姓名或从右侧下拉列表选择";
+            userSelect.style.display = 'block';
+            loadHistoryBtn.style.display = 'block';
+            
+            // 加载用户列表到下拉框
+            loadUserList();
+            
+            // 下拉框选择事件
+            userSelect.addEventListener('change', function() {
+                if (this.value) {
+                    studentName.value = this.value;
+                    // 自动触发查看记录
+                    loadHistoryBtn.click();
+                }
+            });
+            
+            // 输入框变化时清除下拉框选择（如果不匹配）
+            studentName.addEventListener('input', function() {
+                const inputValue = this.value;
+                // 检查输入值是否在下拉列表中
+                const options = Array.from(userSelect.options);
+                const matchingOption = options.find(option => option.value === inputValue);
+                if (matchingOption) {
+                    userSelect.value = inputValue;
+                } else {
+                    userSelect.value = '';
+                }
+            });
+            
+            // 回车键提交
+            studentName.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loadHistoryBtn.click();
+                }
+            });
+            
+            // 提交按钮事件
+            loadHistoryBtn.addEventListener('click', function() {
+                const selectedUser = studentName.value.trim();
+                if (selectedUser) {
+                    loadHistory(selectedUser);
+                    updateCurrentUserIndicator(selectedUser);
+                    // 视觉反馈
+                    const originalText = this.textContent;
+                    this.textContent = '加载中...';
+                    this.disabled = true;
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                        this.disabled = false;
+                    }, 800);
+                } else {
+                    alert('请输入或选择用户姓名');
+                    studentName.focus();
+                }
+            });
+            
+            // 默认加载管理员自己的记录
+            studentName.value = currentUsername;
+            loadHistory(currentUsername);
+            updateCurrentUserIndicator(currentUsername);
+            
+        } else {
+            // 普通用户：只能使用自己的用户名，设为只读
+            studentName.value = currentUsername;
+            studentName.readOnly = true;
+            studentName.style.backgroundColor = '#f5f5f5';
+            studentName.style.color = '#666';
+            loadHistory(currentUsername);
+        }
+        
+        // 普通用户的blur事件（管理员通过按钮提交）
+        if (currentRole !== 'admin') {
+            studentName.addEventListener('blur', function() {
+                if (this.value.trim()) loadHistory(this.value.trim());
+            });
+        }
+        
+        // 加载用户列表（仅管理员）
+        async function loadUserList() {
+            if (currentRole !== 'admin') return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/auth/users', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    console.warn('权限验证失败，可能需要重新登录');
+                    return;
+                }
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'ok' && data.users) {
+                        // 清空现有选项，保留默认选项
+                        userSelect.innerHTML = '<option value="">选择用户...</option>';
+                        
+                        // 按用户名排序，管理员优先
+                        const sortedUsers = data.users.sort((a, b) => {
+                            // 管理员排在前面
+                            if (a.role === 'admin' && b.role !== 'admin') return -1;
+                            if (a.role !== 'admin' && b.role === 'admin') return 1;
+                            // 相同角色按姓名排序
+                            return a.trainee_name.localeCompare(b.trainee_name);
+                        });
+                        
+                        // 添加用户选项
+                        sortedUsers.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.trainee_name;
+                            const roleLabel = user.role === 'admin' ? ' 👑' : '';
+                            option.textContent = user.trainee_name + roleLabel;
+                            userSelect.appendChild(option);
+                        });
+                        
+                        // 设置当前管理员为选中状态
+                        userSelect.value = currentUsername;
+                        
+                        console.log(`已加载 ${data.users.length} 个用户到选择列表`);
+                    }
+                }
+            } catch (e) {
+                console.error('加载用户列表失败:', e);
+                // 添加错误选项提示
+                userSelect.innerHTML = '<option value="">加载用户列表失败</option>';
+            }
+        }
+        window.onerror = function(msg, url, line) {
+            document.getElementById('errorMsg').textContent = 'JS错误: ' + msg + ' (行' + line + ')';
+            document.getElementById('errorMsg').classList.add('active');
+        };
+    </script>
+</body>
+</html>

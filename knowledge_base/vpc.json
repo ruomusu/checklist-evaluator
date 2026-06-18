@@ -1,0 +1,67 @@
+[
+  {
+    "question_id": "Q1",
+    "question": "What is a VPC and what are its main components?",
+    "reference_answer": "VPC（Virtual Private Cloud）是AWS中的虚拟私有云：\n\n定义：\n- 在AWS云中创建的隔离的虚拟网络环境\n- 用户对网络进行完全控制，包括IP地址范围、子网、路由表和网关\n- 提供与互联网和其他VPC的隔离\n\n主要组件：\n\n1. 子网（Subnets）：\n   - VPC内的IP地址块\n   - 公有子网：具有到互联网网关的路由\n   - 私有子网：没有直接到互联网的路由\n   - 可以跨越多个可用区\n\n2. 路由表（Route Tables）：\n   - 定义子网内流量的路由规则\n   - 控制流量去往何处\n   - 支持目标地址前缀匹配\n\n3. 网关（Gateways）：\n   - 互联网网关（IGW）：连接VPC和互联网\n   - NAT网关：允许私有子网访问互联网\n   - VPN网关：连接VPC和本地数据中心\n\n4. 安全组（Security Groups）：\n   - 实例级别的虚拟防火墙\n   - 控制入站和出站流量\n   - 有状态的流量控制\n\n5. 网络访问控制列表（NACLs）：\n   - 子网级别的流量过滤\n   - 有状态和无状态规则\n   - 评估顺序很重要\n\n6. 弹性IP（EIP）：\n   - 与实例关联的静态公有IP\n   - 可以在实例间移动\n   - 需要为未关联的EIP付费\n\n7. VPC端点（VPC Endpoints）：\n   - 私有连接到AWS服务\n   - 网关端点（S3、DynamoDB）\n   - 接口端点（其他AWS服务）",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/userguide/what-is-amazon-vpc.html"
+    ]
+  },
+  {
+    "question_id": "Q2",
+    "question": "What is the difference between public subnets and private subnets?",
+    "reference_answer": "公有子网和私有子网的主要区别：\n\n公有子网（Public Subnet）：\n- 有直接到互联网网关的路由（0.0.0.0/0 → IGW）\n- 子网内的实例可以被互联网访问（如果配置了安全组）\n- 实例可以直接访问互联网\n- 通常用于托管面向互联网的资源（Web服务器、LB）\n- 需要分配公有IP或弹性IP才能通过互联网访问\n\n私有子网（Private Subnet）：\n- 没有直接到互联网网关的路由\n- 子网内的实例无法从互联网直接访问\n- 实例可以通过NAT网关访问互联网\n- 通常用于托管不需要直接互联网访问的资源（数据库、应用服务器）\n- 流量需要通过NAT进行转换\n- 更安全但需要NAT网关的成本\n\n工作流程示例：\n- 公有子网：互联网 → IGW → 实例\n- 私有子网：实例 → NAT网关 → IGW → 互联网\n\n最佳实践：\n- 多层架构：Web层在公有子网，应用层和数据库在私有子网\n- 安全性：减少暴露在互联网上的实例数量\n- 高可用性：在多个可用区创建子网对\n- 隔离：不同环境使用不同的VPC或子网",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/userguide/VPC_Subnets.html"
+    ]
+  },
+  {
+    "question_id": "Q3",
+    "question": "Explain the difference between Security Groups and Network ACLs (NACLs)",
+    "reference_answer": "安全组和网络ACL的主要区别：\n\n作用层级：\n- 安全组：实例级别（关联到ENI）\n- NACL：子网级别（应用于整个子网）\n\n流量控制方向：\n- 安全组：有状态（允许流量自动返回）\n- NACL：无状态（需要显式配置入站和出站规则）\n\n默认规则：\n- 安全组：默认拒绝所有入站流量，允许所有出站流量\n- NACL：每个VPC有一个默认的NACL，允许所有流量\n\n规则评估：\n- 安全组：允许规则优先级最高\n- NACL：按规则编号顺序评估（100-32766），第一个匹配的规则生效\n\n规则类型：\n- 安全组：只能配置允许规则\n- NACL：支持允许和拒绝规则\n\n应用范围：\n- 安全组：可关联多个实例\n- NACL：自动应用于子网内所有实例\n\n性能影响：\n- 安全组：有状态跟踪，性能开销较小\n- NACL：无状态检查，需要双向规则\n\n使用场景对比：\n安全组：\n- 细粒度实例级别控制\n- 应用特定的访问策略\n- Web服务器只允许80/443\n- 数据库只允许特定应用访问\n\nNACL：\n- 子网级别的粗粒度控制\n- 阻止不良行为者的IP范围\n- 分离子网间的流量\n- 防御网络层攻击\n\n最佳实践：\n- 使用安全组作为主要防线\n- NACL用于额外的安全层\n- 定期审计规则\n- 遵循最小权限原则",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/userguide/VPC_SecurityGroups.html",
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/userguide/vpc-network-acls.html"
+    ]
+  },
+  {
+    "question_id": "Q4",
+    "question": "What are VPC endpoints and what are the different types?",
+    "reference_answer": "VPC端点是私有连接AWS服务的方式，避免通过互联网进行通信。\n\n主要目的：\n- 使用私有IP地址连接到AWS服务\n- 不需要互联网网关、NAT设备或VPN连接\n- 改进安全性（流量不离开AWS网络）\n- 降低数据传输成本\n- 提高性能和可靠性\n\nVPC端点类型：\n\n1. 网关端点（Gateway Endpoints）：\n   - 支持的服务：S3和DynamoDB\n   - 配置：在路由表中添加路由\n   - 成本：免费\n   - 工作方式：通过路由表自动路由流量\n   - 特点：简单，无需修改应用代码\n\n2. 接口端点（Interface Endpoints）：\n   - 支持大多数AWS服务（EC2、SNS、SQS等）\n   - 配置：创建ENI到服务\n   - 成本：按小时收费\n   - 使用DNS名称访问服务\n   - 特点：提供PrivateLink连接\n\n网关端点配置示例：\n- S3网关端点：\n  1. 创建端点并选择VPC\n  2. 关联路由表\n  3. 添加目标前缀：arn:aws:s3:::bucket-name\n  4. 配置端点策略\n\n接口端点配置示例：\n- EC2接口端点：\n  1. 创建端点并选择VPC\n  2. 选择子网和安全组\n  3. 启用DNS\n  4. 配置端点策略\n\n使用场景：\n- S3网关端点：私有实例访问S3\n- DynamoDB网关端点：Lambda读写DynamoDB\n- 接口端点：私有应用连接AWS管理服务\n- 数据保护：PII数据不离开AWS网络\n\n最佳实践：\n- 对常用服务使用网关端点\n- 配置端点策略限制访问\n- 监控端点流量\n- 使用PrivateLink隔离流量\n- 定期审计端点权限",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/privatelink/vpc-endpoints.html"
+    ]
+  },
+  {
+    "question_id": "Q5",
+    "question": "How do you set up NAT Gateway and what are its considerations?",
+    "reference_answer": "NAT网关设置和考虑事项：\n\nNAT网关的作用：\n- 允许私有子网内的实例访问互联网\n- 隐藏实例的私有IP地址\n- 将流量转换为NAT网关的公有IP\n- 保持连接状态\n\n设置步骤：\n\n1. 创建弹性IP (EIP)：\n   - 分配EIP给NAT网关\n   - 每个NAT网关需要一个EIP\n\n2. 创建NAT网关：\n   - 选择公有子网位置\n   - 分配步骤1的EIP\n   - 等待NAT网关状态为可用\n\n3. 更新私有子网的路由表：\n   - 添加路由：0.0.0.0/0 → NAT网关\n   - 所有互联网流量通过NAT网关\n\n高可用性配置：\n- 在每个可用区创建NAT网关\n- 每个私有子网指向相同AZ的NAT网关\n- 避免AZ间的数据传输成本\n\n性能考虑：\n- 通过量限制：每秒45 Gbps\n- 并发连接数：超过100万自动扩展\n- 单个连接最多55,000个端口\n- 需要监控流量使用情况\n\n成本考虑：\n- NAT网关小时费用\n- 数据处理费用（每GB）\n- 出站数据传输费用\n- 未使用的EIP费用\n- 考虑NAT实例作为成本优化\n\n最佳实践：\n\n1. 高可用性：\n   - 多个AZ的NAT网关\n   - 避免单点故障\n\n2. 监控和告警：\n   - CloudWatch指标监控\n   - 设置流量告警\n   - 监控错误连接\n\n3. 安全性：\n   - 使用安全组控制流量\n   - 配置NACLs\n   - 审计出站流量\n\n4. 成本优化：\n   - 评估是否使用NAT实例\n   - 监控数据传输量\n   - 限制不必要的互联网访问\n\nNAT网关 vs NAT实例对比：\n- 网关：托管服务，高可用，高性能，按使用付费\n- 实例：自管理，灵活，需要高可用配置，按实例规格付费",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/userguide/vpc-nat-gateway.html"
+    ]
+  },
+  {
+    "question_id": "Q6",
+    "question": "What is VPC peering and when would you use it?",
+    "reference_answer": "VPC对等连接是在两个VPC之间建立私有连接的机制。\n\n定义：\n- 在两个VPC之间创建网络连接\n- 使用私有IP地址通信\n- 流量不离开AWS网络\n- 低延迟和高带宽连接\n\n主要特点：\n\n1. 工作原理：\n   - 建立连接双方之间的路由\n   - 可以跨账户、跨地区\n   - 一对一连接（不可传递）\n\n2. 范围：\n   - 同地区对等：最低延迟\n   - 跨地区对等：连接远距离VPC\n\n3. 流量性质：\n   - 私有IP通信\n   - 不通过互联网\n   - 支持双向流量\n\n设置步骤：\n\n1. 创建对等连接请求：\n   - VPC发起方创建请求\n   - 指定目标VPC ID\n\n2. 接受对等连接：\n   - VPC接收方接受请求\n   - 连接激活\n\n3. 更新路由表：\n   - 两个VPC的路由表添加路由\n   - 指向对方的VPC CIDR块\n\n4. 配置安全组和NACL：\n   - 允许来自对方VPC的流量\n   - 配置安全组规则\n\n使用场景：\n\n1. 多账户架构：\n   - 不同部门的VPC连接\n   - 共享资源访问\n   - 中央管理账户\n\n2. 多地区部署：\n   - 跨地区应用程序\n   - 灾难恢复\n   - 数据复制\n\n3. 应用隔离：\n   - 生产和开发环境分离\n   - 不同应用间的连接\n   - 安全边界维护\n\n限制和注意事项：\n- 不支持传递性（A-B-C，A无法直接访问C）\n- CIDR块不能重叠\n- 路由数量限制\n- 跨地区对等有成本\n- 单一连接点故障\n\n最佳实践：\n\n1. 设计考虑：\n   - 明确的网络拓扑\n   - CIDR规划避免重叠\n   - 文档化连接关系\n\n2. 安全性：\n   - 最小权限原则\n   - 安全组精细控制\n   - NACL过滤\n\n3. 高可用性：\n   - 多个对等连接\n   - 冗余路径\n   - 监控连接状态\n\n4. 成本管理：\n   - 跨地区对等费用\n   - 必要时使用Transit Gateway\n   - 监控数据传输",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/peering/what-is-vpc-peering.html"
+    ]
+  },
+  {
+    "question_id": "Q7",
+    "question": "What is AWS Transit Gateway and when should you use it instead of VPC peering?",
+    "reference_answer": "AWS Transit Gateway是一个中心枢纽，用于连接VPC、本地网络和其他AWS账户。\n\n定义：\n- 简化VPC和本地网络的连接\n- 充当所有连接的中心点\n- 支持复杂的网络拓扑\n- 高度可扩展和可管理\n\n主要特点：\n\n1. 连接类型：\n   - VPC连接\n   - VPN连接\n   - Direct Connect连接\n   - 对等地区的Transit Gateway\n\n2. 功能：\n   - 中心化流量路由\n   - 支持传递连接\n   - 流量隔离\n   - 多播支持\n\n3. 管理：\n   - 单点管理\n   - 路由表控制\n   - 附件管理\n\nTransit Gateway vs VPC Peering：\n\nVPC对等：\n- 一对一连接\n- 不支持传递性\n- 配置简单\n- 无额外费用\n- 适合简单拓扑\n\nTransit Gateway：\n- 多对多连接\n- 支持传递性\n- 配置复杂\n- 按附件和数据传输付费\n- 适合复杂拓扑\n\n使用场景：\n\n1. 简单连接：使用VPC对等\n   - 2个VPC连接\n   - 一次性连接\n   - 无高级功能需求\n\n2. 复杂网络：使用Transit Gateway\n   - 多个VPC和本地网络\n   - 需要中央管理\n   - 需要流量控制\n   - 多账户架构\n\n设置步骤：\n\n1. 创建Transit Gateway\n2. 创建Transit Gateway连接\n3. 配置子网关联\n4. 更新路由表\n5. 配置安全性规则\n\n最佳实践：\n- 规划网络拓扑\n- 使用标签分类\n- 配置监控\n- 实施安全策略\n- 定期审计连接",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/tgw/what-is-transit-gateway.html"
+    ]
+  },
+  {
+    "question_id": "Q8",
+    "question": "How do you configure VPC Flow Logs and what information does it capture?",
+    "reference_answer": "VPC流日志捕获VPC中的网络流量信息。\n\n定义：\n- 捕获网络接口发送和接收流量的信息\n- 支持VPC、子网、ENI级别\n- 数据存储在CloudWatch或S3\n\n配置步骤：\n\n1. 创建IAM角色：\n   - 允许访问CloudWatch Logs\n   - 配置信任关系\n\n2. 创建CloudWatch日志组：\n   - 定义日志组名称\n   - 设置保留期\n\n3. 创建流日志：\n   - 选择资源（VPC/子网/ENI）\n   - 选择流量类型（接受/拒绝/全部）\n   - 选择目标（CloudWatch/S3/Kinesis）\n\n捕获的信息：\n- 版本号\n- 账户ID\n- 接口ID\n- 源IP和目标IP\n- 源端口和目标端口\n- 协议号（6=TCP，17=UDP）\n- 包数和字节数\n- 窗口开始和结束时间\n- 接受/拒绝状态\n- 流日志状态\n\n使用场景：\n- 网络故障排查\n- 安全分析\n- 流量监控\n- 合规审计\n\n最佳实践：\n- 启用所有级别的流日志\n- 分析拒绝的流量\n- 定期审计日志\n- 使用Amazon Athena分析\n- 集成安全工具",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/vpc/latest/userguide/flow-logs.html"
+    ]
+  }
+]

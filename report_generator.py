@@ -5,10 +5,13 @@
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from config import Config
 from models import EvaluationReport, MasteryLevel
+
+# 北京时间 UTC+8
+_BJT = timezone(timedelta(hours=8))
 
 
 class ReportGenerator:
@@ -20,56 +23,107 @@ class ReportGenerator:
 
     def _level_emoji(self, level: MasteryLevel) -> str:
         mapping = {
-            MasteryLevel.MASTERED: "✅",
-            MasteryLevel.AMBIGUOUS: "⚠️",
-            MasteryLevel.WEAK: "❌",
+            MasteryLevel.EXCELLENT: "✅",
+            MasteryLevel.SATISFACTORY: "⚠️",
+            MasteryLevel.FAIL: "❌",
         }
         return mapping.get(level, "")
 
     def generate_markdown(self, report: EvaluationReport) -> str:
-        """生成极简 Markdown 报告"""
+        """生成按评级分组的 Markdown 报告"""
         lines = []
 
         lines.append(f"# Checklist 评估报告 — {report.student_name}")
         lines.append("")
-        lines.append(f"评估时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        lines.append(f"评估时间: {datetime.now(_BJT).strftime('%Y-%m-%d %H:%M')}")
         lines.append(f"总计 {report.total_questions} 题 | "
-                     f"✅ 掌握 {report.mastered_count} | "
-                     f"⚠️ 模棱两可 {report.ambiguous_count} | "
-                     f"❌ 薄弱 {report.weak_count}")
+                     f"✅ Excellent (85%+) {report.excellent_count} | "
+                     f"⚠️ Satisfactory (60%-84%) {report.satisfactory_count} | "
+                     f"❌ Fail (<60%) {report.fail_count}")
         lines.append("")
         lines.append("---")
         lines.append("")
 
-        for ev in report.question_evaluations:
-            emoji = self._level_emoji(ev.mastery_level)
-            # 题号后展示原题文本
-            if ev.question:
-                lines.append(f"**{ev.question_id}: {ev.question}** {emoji} {ev.mastery_level.value}")
-            else:
-                lines.append(f"**{ev.question_id}** {emoji} {ev.mastery_level.value}")
-            if ev.missing_points:
-                for point in ev.missing_points:
-                    lines.append(f"- {point}")
-            if ev.notes:
-                lines.append(f"- 💡 {ev.notes}")
+        # ═══ Excellent 优秀区 ═══
+        excellent_evals = [e for e in report.question_evaluations if e.mastery_level == MasteryLevel.EXCELLENT]
+        if excellent_evals:
+            lines.append(f"## ✅ Excellent 优秀区（{len(excellent_evals)} 题）")
             lines.append("")
+            if report.mastered_has_global_links:
+                lines.append("💡 提示：部分题目使用了全球区链接，建议替换为中国区链接")
+                lines.append("")
+            for ev in excellent_evals:
+                if ev.question:
+                    lines.append(f"**{ev.question_id}: {ev.question}** — Excellent ({ev.score}%) ✅")
+                else:
+                    lines.append(f"**{ev.question_id}** — Excellent ({ev.score}%) ✅")
+                lines.append("")
+                if ev.strengths:
+                    lines.append("**🌟 答题亮点**")
+                    for s in ev.strengths:
+                        lines.append(f"- {s}")
+                    lines.append("")
+                if ev.missing_points:
+                    lines.append("**⚠️ 轻微遗漏**")
+                    for m in ev.missing_points:
+                        lines.append(f"- {m}")
+                    lines.append("")
 
-        # 参考文献板块
-        if report.references:
+        # ═══ Satisfactory 提示区 ═══
+        satisfactory_evals = [e for e in report.question_evaluations if e.mastery_level == MasteryLevel.SATISFACTORY]
+        if satisfactory_evals:
+            lines.append(f"## ⚠️ Satisfactory 提示区（{len(satisfactory_evals)} 题）")
+            lines.append("")
+            for ev in satisfactory_evals:
+                self._render_question(lines, ev)
+
+        # ═══ Fail 警示区 ═══
+        fail_evals = [e for e in report.question_evaluations if e.mastery_level == MasteryLevel.FAIL]
+        if fail_evals:
+            lines.append(f"## ❌ Fail 警示区（{len(fail_evals)} 题）")
+            lines.append("")
+            for ev in fail_evals:
+                self._render_question(lines, ev)
+
+        # ═══ 推荐阅读 ═══
+        if report.reading_guide:
             lines.append("---")
             lines.append("")
-            lines.append("### 📚 参考资料 (References)")
+            lines.append("### 🎯 推荐阅读与提升指南")
             lines.append("")
-            for ref in report.references:
-                lines.append(ref)
-            lines.append("")
+            for item in report.reading_guide:
+                lines.append(f"**{item.question_id}: {item.question_summary}**")
+                for res in item.resources:
+                    lines.append(f"- {res}")
+                lines.append("")
 
         return "\n".join(lines)
 
+    def _render_question(self, lines: list, ev) -> None:
+        """渲染单题详情"""
+        emoji = self._level_emoji(ev.mastery_level)
+        if ev.question:
+            lines.append(f"**{ev.question_id}: {ev.question}** — {ev.mastery_level.value} ({ev.score}%) {emoji}")
+        else:
+            lines.append(f"**{ev.question_id}** — {ev.mastery_level.value} ({ev.score}%) {emoji}")
+        lines.append("")
+        if ev.strengths:
+            lines.append("**🌟 答题亮点**")
+            for s in ev.strengths:
+                lines.append(f"- {s}")
+            lines.append("")
+        if ev.missing_points:
+            lines.append("**⚠️ 知识盲区**")
+            for point in ev.missing_points:
+                lines.append(f"- {point}")
+            lines.append("")
+        if ev.notes:
+            lines.append(f"💡 {ev.notes}")
+            lines.append("")
+
     def save_report(self, report: EvaluationReport, filename: str = None) -> str:
         if not filename:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(_BJT).strftime("%Y%m%d_%H%M%S")
             filename = f"evaluation_report_{timestamp}.md"
 
         filepath = os.path.join(self.output_dir, filename)

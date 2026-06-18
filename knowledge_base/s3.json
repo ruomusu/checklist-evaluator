@@ -1,0 +1,158 @@
+[
+  {
+    "question_id": "Q1",
+    "question": "What is the difference between public anonymous access and non-anonymous access in S3 (in terms of authentication), and what is the difference between public network access and private network access in S3 (in terms of networking)?",
+    "reference_answer": "在身份验证方面：\n公共匿名访问：任何用户都可以进行访问，无需任何身份验证，可以设置公共只读（公共匿名访问配置方法：在bucket policy中设置显式授予Principal: \"*\"）\nnon-anonymous access：需要进行身份验证之后才能对S3进行访问，身份验证方式：1/AKSK 2/临时凭证 3/实例\n\n在网络方面：\nS3公网访问：可以直接通过互联网访问S3，如通过URL，受bucket policy控制（可限制来源IP或认证方式），禁用匿名访问的情况下认证后的用户仍可以通过互联网访问（带了凭证）\n私网访问：在VPC中创建VPC gateway endpoint，在S3中创建合适的bucket policy限制来源于特定VPC（通过aws:SourceVPC限制）或IP（通过aws:SourceIP限制）访问，流量留存在AWS中",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/access-control-block-public-access.html",
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/s3-access-control.html",
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/WebsiteEndpoints.html"
+    ]
+  },
+  {
+    "question_id": "Q2",
+    "question": "What protocols and port numbers does S3 support?",
+    "reference_answer": "S3支持以下协议和端口：\n- HTTPS（推荐）\n- HTTP\n\n默认端口：\n- HTTPS: 443\n- HTTP: 80",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/filegateway/latest/files3/Resource_Ports.html"
+    ]
+  },
+  {
+    "question_id": "Q3",
+    "question": "What are the two types of request URLs in S3?",
+    "reference_answer": "S3有两种请求URL类型：\n\n1. Virtual hosted-style request（新款，推荐）：\n   格式：<bucket-name>.s3.<region>.amazonaws.com/<object-key>\n   将bucket_name放在了DNS部分\n\n2. Path-style requests（旧款）：\n   格式：s3.<region>.amazonaws.com/<bucket-name>/<object-key>\n   将bucket_name放在路径部分\n\n注意：两种方式的CA证书不能共用",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/API/RESTObjectOps.html"
+    ]
+  },
+  {
+    "question_id": "Q4",
+    "question": "What are the different storage classes available in S3?",
+    "reference_answer": "S3存储类别包括：\n\n经常访问对象的存储类：\n1. S3 Standard (STANDARD)：默认存储类，如果上传对象时未指定存储类，S3会分配S3 standard存储类\n2. S3 Express One Zone (EXPRESS_ONEZONE)：高性能的单区Amazon S3存储类，专门用于给延迟要求极高的应用程序提供稳定的毫秒级数据访问，存储在单个可用区的多个设备上\n\n不经常访问的存储类：\n3. S3 Standard-IA (STANDARD_IA)：适用于访问频率较低但需要快速访问的数据\n4. S3 One Zone-IA (ONEZONE_IA)：适用于访问频率较低的非关键数据\n\n归档存储类：\n5. S3 Glacier Instant Retrieval：归档数据，毫秒级检索\n6. S3 Glacier Flexible Retrieval：归档数据，分钟到小时级检索\n7. S3 Glacier Deep Archive：长期归档，12小时内检索\n\n其他：\n8. 低冗余存储 (REDUCED_REDUNDANCY)：不建议使用，每年平均对象损失率0.01%，如果丢失在请求时会返回405错误",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/storage-class-intro.html"
+    ]
+  },
+  {
+    "question_id": "Q5",
+    "question": "What are the different encryption methods available in S3? What is the purpose of default encryption?",
+    "reference_answer": "S3加密方法：\n\n服务器端加密（在保存到AWS数据中心之前加密）：\n1. 具有Amazon S3托管密钥的服务器端加密（SSE-S3）- 默认加密配置\n2. 具有AWS Key Management Service (AWS KMS)密钥的服务器端加密（SSE-KMS）\n3. 具有AWS KMS密钥的双层服务器端加密（DSSE-KMS）\n4. 具有客户提供密钥的服务器端加密（SSE-C）\n\n客户端加密：\n在客户端加密并将加密的数据上传到Amazon S3，使用KMS或用户自己的加密密钥\n\nDefault encryption的目的：\n1. 防止遗漏加密\n2. 统一管理（无需为每个对象单独设置加密方式）\n3. 合规性要求\n4. 自动保护新上传的对象",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/UsingEncryption.html"
+    ]
+  },
+  {
+    "question_id": "Q6",
+    "question": "What are the three states of versioning in S3? Any difference between them?",
+    "reference_answer": "S3版本控制的三种状态：\n\n1. 不受版本控制（默认）：\n   - 不保留对象的历史版本\n   - 覆盖对象时直接替换\n\n2. 已启用版本控制：\n   - 所有新对象都将受版本控制\n   - 删除对象时S3会插入删除标记，成为当前对象版本，可以恢复以前的版本\n   - 覆盖对象时，Amazon S3会在存储桶中添加新的对象版本，之前的版本保留在存储桶中，成为非当前版本\n\n3. 已暂停版本控制：\n   - 停止在存储桶中积累同一对象的新版本\n   - 存储桶现有对象不会更改\n   - 停止版本控制之后上传同名的文件会覆盖现有版本\n\n注意：版本控制状态将应用到存储桶的所有对象",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/Versioning.html"
+    ]
+  },
+  {
+    "question_id": "Q7",
+    "question": "What are the metrics related to S3, are they enabled by default?",
+    "reference_answer": "S3相关指标：\n\n默认启用的指标：\n- 存储桶的每日存储指标（每天报告一次，提供给所有客户）：\n  1. BucketSizeBytes\n  2. NumberOfObjects\n\n需要手动启用的指标：\n- S3 CloudWatch请求指标（每隔一分钟提供一次）：\n  1. AllRequests\n  2. GetRequests\n  3. PutRequests\n  4. DeleteRequests\n  5. 4xxErrors\n  6. 5xxErrors等\n\n- S3复制指标：\n  已启用S3 Replication Time Control（S3 RTC）或S3复制指标的复制规则会发布复制指标\n  1. ReplicationLatency\n  2. BytesPendingReplication等\n\n- S3对象Lambda请求指标：\n  1. AllRequests等\n\n- Amazon S3 Storage Lens存储统计管理工具指标：\n  可以将S3 Storage Lens使用情况和活动指标发布到CloudWatch，CloudWatch统计数据会保留15个月",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/metrics-dimensions.html"
+    ]
+  },
+  {
+    "question_id": "Q8",
+    "question": "How many types of logs for S3 and what are the difference between them?",
+    "reference_answer": "S3有两种主要的日志类型：\n\n1. AWS CloudTrail：\n   - 记录管理事件（桶的增删、bucket policy的增删）与数据事件（API操作）\n   - 可以：转发其他系统，日志传输到多目标，对对象的子级开启日志，跨账户日志传输，使用数字签名或哈希对日志文件进行完整性验证，默认或选择加密日志文件\n   - Log delivery速度：data event 5分钟一次，management event 15分钟一次\n   - JSON日志格式\n   - CloudTrail默认只保存对桶的操作记录\n\n2. Amazon S3 Server Access Logs：\n   - 记录什么身份对什么数据进行了请求\n   - 不可以：转发其他系统，日志传输到多目标，对对象的子级开启日志，跨账户日志传输，使用数字签名或哈希对日志文件进行完整性验证，默认或选择加密日志文件\n   - 几小时一次传输\n   - 带空格分隔/新行分隔的记录的日志文件\n   - 记录访问桶的详细情况",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/logging-with-S3.html",
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/cloudtrail-logging.html"
+    ]
+  },
+  {
+    "question_id": "Q9",
+    "question": "What is an S3 request ID pair, and how to obtain it?",
+    "reference_answer": "S3 request ID pair是S3访问处理请求时生成的两个唯一的标识符：\n\n1. x-amz-request-id：主要的较短的请求标识\n2. x-amz-id-2：更长更详细的标识符\n\n获取方式：\n1. Console：在错误弹窗中直接复制\n2. CLI：使用--debug参数，可以在debug信息中看到\n3. 代码调试API：从响应HTTP headers中提取\n4. 详细日志：可以通过S3 access log和AWS CloudTrail事件或数据事件获取请求ID\n\n这些ID对于AWS Support进行问题排查非常重要。",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/RetrievingObjectUsingNetSDK.html"
+    ]
+  },
+  {
+    "question_id": "Q10",
+    "question": "Customer wants to access cross account's bucket, how can they do?",
+    "reference_answer": "跨账户访问S3存储桶的方法：\n\n1. Bucket Policy：\n   - 账户A可以将访问自身资源的权限授予给账户B\n   - 账户B可以随后将这些权限委托给其账户中的用户\n   - 管理员账户自动继承这些权限\n\n2. Assume Role：\n   - 账户B去assume账户A的角色\n   - 账户A创建角色，账户B信任该角色\n\n3. Access Points：\n   - 在账户A的桶上创建一个access point\n   - 允许账户B的某个role进行访问\n   - 确保桶policy不会拒绝该角色\n\n4. Object ACL：\n   - 桶里面的object可以用object ACL给跨账户的权限\n   - 需要注意object owner的设置\n\n注意：需要确保bucket policy、IAM策略和Block Public Access设置都正确配置",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/example-walkthroughs-managing-access-example2.html"
+    ]
+  },
+  {
+    "question_id": "Q11",
+    "question": "Can customer create a directory similar to a file system? If not, what is the implementation mechanism of the Create Folder button on the S3 console?",
+    "reference_answer": "不可以，S3存储桶具有扁平结构，而不是类似于文件系统的层次结构。\n\n但为了组织简易性，S3控制台支持将文件夹概念作为对象分组手段：\n- 控制台通过共享名称前缀来实现此目的\n- 文件夹实际上是前缀\n- S3里面都是object，没有具体的directory\n\nCreate Folder按钮的实现机制：\n- 当你在S3控制台点击\"Create Folder\"时，实际上是创建一个以\"/\"结尾的空对象\n- 这个对象作为前缀存在，让控制台能够显示文件夹结构\n- 其他对象可以使用这个前缀来模拟在该\"文件夹\"内的效果",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/using-folders.html"
+    ]
+  },
+  {
+    "question_id": "Q12",
+    "question": "What key/value can you set in object's metadata and when will you use it?",
+    "reference_answer": "对象元数据分为两类：\n\n1. 系统定义的元数据：\n   - 创建日期、大小、存储类等\n   - 由S3自动设置\n\n2. 用户定义的元数据：\n   - 以x-amz-meta-为开头的键值对\n   - 用户可以自定义设置\n\n使用场景：\n1. 使用S3元数据查询（加快数据发现速度）：通过配置元数据表的方式\n2. 业务逻辑标记：用于标记来源与分类\n3. 权限控制：如仅允许读取x-amz-meta-read: true的数据\n4. 触发Lambda：通过x-amz-meta-status: pending这种形式触发lambda\n5. 版本标识：标记对象的版本信息\n\n注意：\n- 有些元数据包含不可打印的字符，x-amz-missing-meta标头将与不可打印的元数据条目的数量值一起返回\n- 元数据总大小限制为2KB",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/UsingMetadata.html"
+    ]
+  },
+  {
+    "question_id": "Q13",
+    "question": "What is Block Public Access?",
+    "reference_answer": "Block Public Access是S3的一个安全功能：\n\n目的：\n- 默认开启，避免S3桶被不必要的公开访问造成数据泄露\n- 是一个总开关，从最高层级阻断数据公开到互联网\n- 任何一层deny，整个都会deny，没有覆盖一说\n\n作用范围：\n- 提供给Access Points（接入点/节点）、Buckets（存储桶）、Account级别\n- 帮助管理对S3的公共访问\n\n工作机制：\n- 默认不允许公共访问\n- 用户可以修改存储桶策略/接入点策略或对象权限来允许公共访问（ACL也可以设置）\n- S3屏蔽公共访问权限设置会覆盖这些策略和权限，以便于限制这些资源的公共访问\n\n配置选项：\n- 四种封锁选项，独立开关，可灵活组合使用\n- Bucket policy和ACL才是权限控制的主体，四个按钮只是打不打开这个限制",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/access-control-block-public-access.html"
+    ]
+  },
+  {
+    "question_id": "Q14",
+    "question": "What is multipart upload? Please describe the logic briefly.",
+    "reference_answer": "Multipart upload是将单个对象作为一组分段上传的机制：\n\n基本概念：\n- 每个分段都是对象数据的连续部分\n- 可进行独立上传或按任意顺序上传这些对象分段\n- 传输失败时重新传输不会影响其他分段\n- 一般而言大小大于100MB之后考虑使用分段上传\n\n上传过程：\n1. 启动上传：\n   - 发送请求开始分段上传\n   - S3返回具有上传ID的响应，此ID是分段上传的唯一标识\n\n2. 分段上传：\n   - 除上传ID还必须指定分段编号\n   - 在S3 Express One Zone中，分段编号必须是连续的\n   - 分段编号相同时会覆盖之前上传的分段\n   - S3在响应中返回实体标签(ETag)，需要记录分段编号和ETag值\n\n3. 完成上传：\n   - S3按分段编号的升序将各个分段连接起来创建对象\n   - 完成请求必须包括上传ID以及分段编号及其相应的ETag值列表\n   - 完成后分段将不再存在\n   - 响应的ETag并非对象数据的MD5哈希",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/mpuoverview.html"
+    ]
+  },
+  {
+    "question_id": "Q15",
+    "question": "What is ACL? What is difference between ACL and bucket policy?",
+    "reference_answer": "ACL (Access Control List)：\n- 用来管理存储桶和对象的访问权限\n- 每个存储桶和对象都有一个作为子资源而附加的ACL\n- 定义哪些AWS账户或组可以访问以及访问的类型\n- ACL默认禁用，建议使用IAM策略来管理对象访问权限\n\nACL与Bucket Policy的区别：\n\n1. 优先级：\n   - Bucket policy优先级更高\n\n2. 作用范围：\n   - ACL：适用于桶和单个对象\n   - Bucket policy：直接作用于桶\n\n3. 授权对象：\n   - ACL：仅限AWS账户ID和预定义组\n   - Bucket policy：可以是IAM实体、其他账户、匿名用户\n\n4. 灵活性：\n   - ACL：功能相对简单，授权选项有限\n   - Bucket policy：功能更强大，可以设置复杂的访问条件\n\n5. 管理方式：\n   - ACL：对象级别的精细控制\n   - Bucket policy：桶级别的统一管理\n\n建议使用Bucket policy和IAM策略进行访问控制，而不是ACL",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/acl-overview.html",
+      "https://aws.amazon.com/cn/blogs/security/iam-policies-and-bucket-policies-and-acls-oh-my-controlling-access-to-s3-resources/"
+    ]
+  },
+  {
+    "question_id": "Q16",
+    "question": "Customer got 401 error when they access object, when will this problem occur? How to investigate and solve it?",
+    "reference_answer": "S3返回401错误的常见原因：\n\n主要原因：\n- ICP备案问题：在中国区域（北京、宁夏），通过80/443端口提供服务需要ICP备案\n\n调查步骤：\n1. 检查账号是否完成ICP备案\n2. 确认访问的区域是否为中国区域\n3. 检查访问协议和端口\n4. 验证请求的身份验证信息\n\n解决方案：\n1. 如果是ICP备案问题：\n   - 完成ICP备案流程\n   - 或者使用其他区域的资源\n   \n2. 其他可能的解决方案：\n   - 检查访问密钥是否正确\n   - 确认时间同步是否正确\n   - 验证签名算法是否正确\n   - 检查网络连接状态\n\n注意：401错误主要与身份验证相关，不同于403权限拒绝错误",
+    "reference_links": [
+      "https://repost.aws/zh-Hans/questions/QUJmOl0P4ZTXGdwV5pPOlvhg"
+    ]
+  },
+  {
+    "question_id": "Q17",
+    "question": "What are common 4XX/5XX errors when accessing S3 and their causes?",
+    "reference_answer": "常见的S3错误代码：\n\n4XX客户端错误：\n- 400 (Bad Request)：错误的请求格式或参数\n- 401 (Unauthorized)：未授权，通常与ICP备案有关\n- 403 (Forbidden)：权限不足，可能原因：\n  * IAM/bucket policy权限问题\n  * Block Public Access已启用\n  * 签名错误\n- 404 (Not Found)：桶不存在或路径问题\n- 409 (Conflict)：并发操作冲突\n- 416 (Requested Range Not Satisfiable)：请求的范围无法满足\n\n5XX服务端错误：\n- 500 (Internal Server Error)：S3服务内部错误\n- 502 (Bad Gateway)：代理服务器或CDN与S3通信失败\n- 503 (Service Unavailable)：S3服务过载或限流\n\n错误分类：\n- 4XX：客户端错误，通常需要修改请求\n- 5XX：服务端错误，通常需要重试或联系AWS支持\n\n排查建议：\n1. 检查请求格式和参数\n2. 验证权限配置\n3. 确认资源是否存在\n4. 检查网络连接\n5. 查看CloudTrail日志",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/API/ErrorResponses.html"
+    ]
+  },
+  {
+    "question_id": "Q18",
+    "question": "What is SRR/CRR and when will you use them?",
+    "reference_answer": "S3复制分为两种类型：\n\n跨区域复制（CRR - Cross Region Replication）：\n- 跨不同AWS区域中的S3存储桶复制对象\n\n使用场景：\n1. 满足合规性要求：数据存储距离要求更远，在远距离AWS区域之间复制数据\n2. 最大限度减少延迟：在地理位置离用户较近的AWS区域中维护对象副本\n3. 提高操作效率：计算集群分布在不同区域时，进行本地化计算，避免跨区域访问\n\n同区域复制（SRR - Same Region Replication）：\n- 跨同一AWS区域中的S3存储桶复制对象\n\n使用场景：\n1. 将日志聚合到单个存储桶：将多个存储桶或账户的日志复制到单一位置\n2. 在生产账户和测试账户之间配置实时复制：保持生产和测试数据同步\n3. 遵守数据主权法律：将数据的多个副本存储在特定区域内的单独AWS账户内\n\n配置要求：\n- 源和目标存储桶都必须启用版本控制\n- 需要配置IAM角色\n- 可以设置复制规则和过滤条件\n- 支持加密对象的复制",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/replication.html"
+    ]
+  },
+  {
+    "question_id": "Q19",
+    "question": "What can lifecycle rule do? Is there any difference between it and manual operation? Does it have any limitation?",
+    "reference_answer": "Lifecycle rule功能：\n- 通过将对象转换到成本较低的存储类协助经济高效存储\n- 代表用户删除到期的对象\n- 需要为存储桶创建S3生命周期配置\n\n与手动操作的区别：\n1. 自动化：可以预先设置对象生命周期结束/归档或转换的时间\n2. 效率：提高了时间效率，避免出现遗忘\n3. 可靠性：保证了操作的可靠性和一致性\n4. 规模：可以批量处理大量对象\n\n限制条件：\n1. 大小限制：小于128KB的对象不会转换到任何存储类\n2. 时间限制：对象存储至少达到30天才能转换到S3 Standard-IA或S3 One Zone-IA\n3. 执行延迟：满足生命周期规则到规则操作完成之间会有延迟，S3可能会延迟几天甚至几周才会真正删除这些对象（因为S3生命周期以异步的方式将对象排入队列执行转换或到期操作）\n4. 版本限制：对象过期仅适用于对象的当前版本\n5. 存储类转换：某些存储类之间的转换有特定的限制和要求\n\n注意：生命周期规则的执行是异步的，不是实时的",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/object-lifecycle-mgmt.html"
+    ]
+  }
+]

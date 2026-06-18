@@ -17,6 +17,7 @@ from models import (
     KnowledgeItem,
     StudentAnswer,
     QuestionEvaluation,
+    ReadingGuideItem,
     EvaluationReport,
     MasteryLevel,
 )
@@ -237,34 +238,44 @@ class Evaluator:
             log(f"原始响应前 200 字符: {cleaned[:200]}", stage="ERROR", level=logging.DEBUG)
             raise ValueError(f"LLM 返回的内容无法解析为 JSON: {e}")
 
-        # 构建逐题评估
+        # 构建逐题评估（只包含 Satisfactory 和 Fail）
         evaluations = []
         for item in data.get("question_evaluations", []):
             evaluations.append(QuestionEvaluation(
                 question_id=item["question_id"],
                 question=item.get("question", ""),
                 mastery_level=MasteryLevel(item["mastery_level"]),
+                score=item.get("score", 0),
+                strengths=item.get("strengths", []),
                 missing_points=item.get("missing_points", []),
                 notes=item.get("notes", ""),
             ))
 
-        # 统计各等级数量
-        mastered = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.MASTERED)
-        ambiguous = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.AMBIGUOUS)
-        weak = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.WEAK)
+        # 提取 Excellent 题目信息
+        mastered_ids = data.get("mastered_ids", [])
+        mastered_has_global_links = data.get("mastered_has_global_links", False)
+
+        # 统计各等级数量（从实际 evaluations 计数，确保准确）
+        excellent = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.EXCELLENT)
+        satisfactory = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.SATISFACTORY)
+        fail = sum(1 for e in evaluations if e.mastery_level == MasteryLevel.FAIL)
 
         log(
-            f"解析完成 | 掌握: {mastered} | 模棱两可: {ambiguous} | 薄弱: {weak}",
+            f"解析完成 | Excellent: {excellent} | Satisfactory: {satisfactory} | Fail: {fail}",
             stage="LLM",
         )
 
         return EvaluationReport(
             total_questions=len(knowledge_items),
-            mastered_count=mastered,
-            ambiguous_count=ambiguous,
-            weak_count=weak,
+            excellent_count=excellent,
+            satisfactory_count=satisfactory,
+            fail_count=fail,
+            mastered_ids=mastered_ids,
+            mastered_has_global_links=mastered_has_global_links,
             question_evaluations=evaluations,
-            references=data.get("references", []),
+            reading_guide=[
+                ReadingGuideItem(**item) for item in data.get("reading_guide", [])
+            ],
         )
 
     def evaluate(

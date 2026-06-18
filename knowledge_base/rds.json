@@ -1,0 +1,70 @@
+[
+  {
+    "question_id": "Q1",
+    "question": "What are the main database engines supported by Amazon RDS?",
+    "reference_answer": "Amazon RDS支持以下数据库引擎：\n\n1. 关系型数据库：\n   - MySQL：开源关系数据库，成本低，性能稳定\n   - MariaDB：MySQL的开源分支，具有更多企业功能\n   - PostgreSQL：功能强大的开源关系数据库，支持JSON、JSONB等扩展类型\n   - Oracle Database：商业数据库，支持企业级应用\n   - SQL Server：Microsoft的商业数据库，与Windows生态集成紧密\n\n2. 其他数据库类型：\n   - Amazon Aurora：AWS原生数据库，与MySQL和PostgreSQL兼容，性能更优\n\n各引擎支持情况：\n- 每个引擎都支持多个版本\n- 可以通过版本升级来获取最新功能和安全补丁\n- 支持自动备份和跨AZ高可用部署",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html"
+    ]
+  },
+  {
+    "question_id": "Q2",
+    "question": "What is the difference between Read Replicas and Multi-AZ deployments in RDS?",
+    "reference_answer": "RDS中Read Replicas和Multi-AZ部署的区别：\n\n1. Multi-AZ部署（高可用性）：\n   - 目的：提高可用性和容错能力\n   - 部署方式：在不同的可用区部署主实例和备用副本\n   - 数据同步：同步复制，备用数据与主数据保持一致\n   - 故障转移：自动转移（通常在1-2分钟内完成）\n   - 访问方式：应用仍使用同一个数据库端点\n   - 性能影响：主实例性能可能下降（由于同步复制的网络延迟）\n   - 备用实例是否可读：不可读（备用实例只用于故障转移）\n\n2. Read Replicas（读扩展）：\n   - 目的：扩展读取能力，减轻主实例负担\n   - 部署方式：可在同一AZ、不同AZ或不同区域创建\n   - 数据同步：异步复制，可能存在延迟\n   - 故障转移：需要手动转移或应用端配置\n   - 访问方式：应用需要连接到Read Replica的独立端点\n   - 性能影响：主实例性能不受影响\n   - 备用实例是否可读：可读（主要用途就是处理读请求）\n   - 成本：需要单独付费\n\n使用场景：\n- Multi-AZ：用于生产环境需要高可用性的关键应用\n- Read Replicas：用于需要扩展读取能力或实现跨地域部署的场景",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_ReadRepl.html"
+    ]
+  },
+  {
+    "question_id": "Q3",
+    "question": "How do you backup and restore a database in RDS?",
+    "reference_answer": "RDS备份和恢复机制：\n\n自动备份：\n1. 备份保留期：默认7天，可配置为1-35天\n2. 备份内容：包括完整的数据库和事务日志\n3. 备份时间窗口：可指定备份时间窗口（通常在维护窗口期间）\n4. 成本：与备份存储大小相关，每GB有费用\n5. 恢复到时间点（PITR）：可恢复到保留期内的任意时间点\n\n手动备份（快照）：\n1. 创建方式：手动触发或通过自动化脚本创建\n2. 保留期：无限期保留直到手动删除\n3. 成本：需要为快照存储付费\n4. 恢复：可从快照创建新的数据库实例\n\n恢复方式：\n1. 时间点恢复（Point-in-Time Recovery）：\n   - 创建新的数据库实例\n   - 指定恢复到的时间点\n   - 需要保留自动备份\n   - 适合用于误删除恢复\n\n2. 快照恢复：\n   - 从手动快照或自动备份创建新实例\n   - 恢复后获得一个新的数据库实例\n   - 原实例不受影响\n\n3. 跨地域恢复：\n   - 可以在不同区域创建数据库副本\n   - 支持跨区域恢复\n\n最佳实践：\n- 定期创建手动快照用于长期保留\n- 在进行重要操作前创建快照\n- 测试恢复流程以确保备份有效\n- 备份和原实例存储在不同的存储中",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_CreateSnapshot.html",
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_PIT.html"
+    ]
+  },
+  {
+    "question_id": "Q4",
+    "question": "What are RDS DB instance classes and how do you choose the right one?",
+    "reference_answer": "RDS数据库实例类型：\n\n实例类型分类：\n1. 标准类（db.t系列）：\n   - 特点：可突增性能，成本低\n   - 适用场景：开发、测试、低流量生产应用\n   - 通常有信用积累机制，可短时间突增到更高性能\n\n2. 内存优化类（db.r系列）：\n   - 特点：高内存相对于CPU，缓存密集型应用\n   - 适用场景：大型数据库、内存中数据处理\n   - 提供最优的内存-CPU比\n\n3. 计算优化类（db.c系列）：\n   - 特点：高CPU相对于内存，计算密集型\n   - 适用场景：CPU密集的数据库操作\n\n4. 存储优化类（db.i系列）：\n   - 特点：高IOPS和存储吞吐量\n   - 适用场景：I/O密集型操作\n\n选择标准：\n1. 工作负载特性：\n   - 分析当前CPU、内存、磁盘I/O的使用情况\n   - 使用CloudWatch监控确定瓶颈\n\n2. 成本考虑：\n   - 权衡成本和性能\n   - 考虑预留实例（RI）获得折扣\n\n3. 可扩展性：\n   - 选择可以升级的实例类型\n   - 避免性能过剩或不足\n\n4. 可用性需求：\n   - 生产环境优先选择支持Multi-AZ的实例\n\n最佳实践：\n- 从较小的实例开始，根据监控数据升级\n- 在非生产环境测试实例类型变更\n- 定期审查和优化实例类型选择",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html"
+    ]
+  },
+  {
+    "question_id": "Q5",
+    "question": "What is RDS encryption and how do you enable it?",
+    "reference_answer": "RDS数据库加密：\n\n加密类型：\n1. 存储加密（At-rest encryption）：\n   - 使用AWS Key Management Service (KMS)加密数据库卷\n   - 加密密钥由AWS管理或由客户管理\n   - 对数据库快照也进行加密\n\n2. 传输加密（In-transit encryption）：\n   - SSL/TLS加密数据库连接\n   - 确保数据在传输中受保护\n   - 支持强制SSL连接\n\n启用存储加密：\n1. 创建数据库时启用：\n   - 在创建数据库实例时选择\"启用加密\"\n   - 选择KMS密钥（AWS托管或客户托管）\n   - 新创建的数据库将被加密\n\n2. 现有数据库加密：\n   - 不能直接在现有数据库上启用加密\n   - 需要创建加密的快照副本：\n     1. 创建现有数据库的快照\n     2. 复制快照并启用加密\n     3. 从加密快照恢复新数据库\n\n启用传输加密：\n1. 使用SSL证书连接\n2. 配置安全组允许特定端口\n3. 数据库端点支持SSL连接参数\n\n性能影响：\n- 存储加密对性能影响很小\n- 传输加密可能增加网络开销\n\n成本：\n- 存储加密：按KMS API调用次数收费\n- 传输加密：无额外成本\n\n最佳实践：\n- 生产环境始终启用加密\n- 使用客户托管的KMS密钥便于密钥轮换\n- 定期验证加密配置\n- 妥善保管KMS密钥",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Overview.Encryption.html"
+    ]
+  },
+  {
+    "question_id": "Q6",
+    "question": "What are RDS maintenance windows and how do they work?",
+    "reference_answer": "RDS维护时间窗口：\n\n定义：\n- AWS会在此期间对RDS实例进行维护操作\n- 维护可能导致数据库实例暂时不可用\n\n维护操作包括：\n1. 数据库引擎版本升级\n2. 安全补丁应用\n3. 操作系统补丁\n4. 硬件维护\n5. 数据库实例维护\n\n维护时间窗口规格：\n1. 时间段：长度通常为1小时\n2. 频率：通常每周进行一次\n3. 时区：可指定首选维护时间\n4. 可配置：用户可选择首选的维护窗口\n\n数据库停机影响：\n1. Multi-AZ部署：\n   - 故障转移到备用实例\n   - 停机时间通常为1-2分钟\n   - 应用连接字符串不变（RDS端点保持不变）\n\n2. 单AZ部署：\n   - 直接停机进行维护\n   - 停机时间几分钟到几小时（取决于维护类型）\n   - 应用连接中断\n\n最佳实践：\n1. 选择流量最低的时间段作为维护窗口\n2. 生产环境使用Multi-AZ以减少停机影响\n3. 提前进行版本升级测试\n4. 配置应用自动重连机制\n5. 在非生产环境提前测试升级\n\n延迟维护：\n- 某些情况下可以延迟维护操作\n- 但安全相关的补丁通常无法延迟",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Maintenance.html"
+    ]
+  },
+  {
+    "question_id": "Q7",
+    "question": "What is the difference between RDS and DynamoDB?",
+    "reference_answer": "RDS和DynamoDB的区别：\n\n1. 数据库类型：\n   - RDS：关系型数据库（RDBMS），支持SQL查询\n   - DynamoDB：NoSQL键值数据库\n\n2. 数据模型：\n   - RDS：表、行、列的结构化数据\n   - DynamoDB：键值对、灵活的数据结构\n\n3. 查询能力：\n   - RDS：支持复杂SQL查询、JOIN、聚合函数\n   - DynamoDB：基于键的查询，查询能力有限\n\n4. 可扩展性：\n   - RDS：垂直扩展（升级实例类型）和读副本水平扩展\n   - DynamoDB：完全无服务器，自动水平扩展\n\n5. 性能：\n   - RDS：毫秒级延迟，适合复杂查询\n   - DynamoDB：微秒级延迟，适合简单查询\n\n6. 成本模型：\n   - RDS：按实例大小和存储计费，固定成本\n   - DynamoDB：按读写容量或按需计费，使用量计费\n\n7. 维护：\n   - RDS：AWS完全管理备份、补丁、故障转移\n   - DynamoDB：完全无服务器，无需维护\n\n8. 使用场景：\n   - RDS：复杂业务逻辑、需要事务支持、复杂查询\n   - DynamoDB：高并发、简单键值查询、低延迟要求\n\n9. ACID特性：\n   - RDS：完全支持ACID事务\n   - DynamoDB：有限的事务支持\n\n10. 备份和恢复：\n    - RDS：自动备份、时间点恢复、快照\n    - DynamoDB：按需备份、时间点恢复（需配置）",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Welcome.html",
+      "https://docs.aws.amazon.com/zh_cn/amazondynamodb/latest/developerguide/Introduction.html"
+    ]
+  },
+  {
+    "question_id": "Q8",
+    "question": "How do you monitor RDS database performance?",
+    "reference_answer": "RDS性能监控：\n\n1. CloudWatch监控指标：\n   - CPU利用率：监控数据库的CPU使用情况\n   - 数据库连接数：监控活跃连接数\n   - 磁盘I/O读写速率：监控存储I/O性能\n   - 存储空间：监控数据库存储使用情况\n   - 网络吞吐量：监控网络传输速率\n   - 内存使用：监控内存缓冲池使用\n   - 事务日志：监控事务日志生成速率\n\n2. RDS Enhanced Monitoring：\n   - 提供更详细的操作系统级别的指标\n   - 可配置监控粒度（1秒到60秒）\n   - 需要启用IAM角色权限\n\n3. Performance Insights：\n   - 可视化数据库工作负载\n   - 识别性能瓶颈\n   - 分析数据库活动\n   - 按等待事件分类性能问题\n\n4. 数据库日志：\n   - 错误日志：捕获数据库错误和警告\n   - 慢查询日志：记录执行缓慢的查询\n   - 审计日志：记录数据库活动（部分引擎支持）\n   - 事务日志：用于恢复和复制\n\n5. CloudWatch告警：\n   - 为关键指标设置告警阈值\n   - 支持多种通知方式（SNS、Lambda等）\n   - 自动扩展触发器\n\n常见监控指标阈值：\n- CPU利用率 > 80%：可能需要升级实例\n- 磁盘使用率 > 85%：可能需要扩展存储\n- 数据库连接数接近最大值：可能需要优化连接池\n- IOPS利用率高：考虑升级到更高性能的实例\n\n最佳实践：\n- 建立性能基准\n- 定期查看历史性能数据\n- 针对关键指标设置告警\n- 使用Performance Insights找出性能瓶颈\n- 定期优化慢查询",
+    "reference_links": [
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/MonitoringOverview.html",
+      "https://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/USER_PerfInsights.html"
+    ]
+  }
+]

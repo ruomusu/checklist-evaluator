@@ -11,9 +11,9 @@ from pydantic import BaseModel, Field
 
 class MasteryLevel(str, Enum):
     """掌握程度枚举"""
-    MASTERED = "掌握"
-    AMBIGUOUS = "模棱两可"
-    WEAK = "薄弱"
+    EXCELLENT = "Excellent"
+    SATISFACTORY = "Satisfactory"
+    FAIL = "Fail"
 
 
 class KnowledgeItem(BaseModel):
@@ -31,20 +31,31 @@ class StudentAnswer(BaseModel):
 
 
 class QuestionEvaluation(BaseModel):
-    """单题评估结果（极简：判定等级、原题文本、缺失点和可选提醒）"""
+    """单题评估结果（判定等级、正确率、亮点、盲区）"""
     question_id: str = Field(description="题目编号")
     question: str = Field(default="", description="原题文本")
-    mastery_level: MasteryLevel = Field(description="掌握程度判定")
-    missing_points: list[str] = Field(default_factory=list, description="缺失/错误的关键知识点（含角标引用）")
+    mastery_level: MasteryLevel = Field(description="判定等级")
+    score: int = Field(description="正确率百分比（0-100）")
+    strengths: list[str] = Field(default_factory=list, description="答题亮点（基于具体技术事实）")
+    missing_points: list[str] = Field(default_factory=list, description="知识盲区（含角标引用）")
     notes: str = Field(default="", description="可选提醒，如链接区域建议")
 
 
+class ReadingGuideItem(BaseModel):
+    """单题推荐阅读"""
+    question_id: str = Field(description="题目编号")
+    question_summary: str = Field(description="题目简述")
+    resources: list[str] = Field(default_factory=list, description="推荐资源列表")
+
+
 class EvaluationReport(BaseModel):
-    """评估报告（精简版：逐题判定 + 参考文献）"""
+    """评估报告"""
     student_name: str = Field(default="新人", description="新人姓名")
     total_questions: int = Field(description="总题目数")
-    mastered_count: int = Field(default=0, description="掌握的题目数")
-    ambiguous_count: int = Field(default=0, description="模棱两可的题目数")
-    weak_count: int = Field(default=0, description="薄弱的题目数")
-    question_evaluations: list[QuestionEvaluation] = Field(description="逐题评估详情")
-    references: list[str] = Field(default_factory=list, description="参考文献列表")
+    excellent_count: int = Field(default=0, description="Excellent 的题目数")
+    satisfactory_count: int = Field(default=0, description="Satisfactory 的题目数")
+    fail_count: int = Field(default=0, description="Fail 的题目数")
+    mastered_ids: list[str] = Field(default_factory=list, description="Excellent 的题目编号列表")
+    mastered_has_global_links: bool = Field(default=False, description="Excellent 题目中是否有使用全球区链接的")
+    question_evaluations: list[QuestionEvaluation] = Field(description="Satisfactory 和 Fail 的逐题评估详情")
+    reading_guide: list[ReadingGuideItem] = Field(default_factory=list, description="推荐阅读与提升指南")
